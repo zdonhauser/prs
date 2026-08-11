@@ -50,6 +50,17 @@ export default defineConfig({
     // build needs a different name so the two installs are distinguishable
     // on a home screen.)
     {
+      // `define` substitutes into JS, not HTML, so the static landing page
+      // can't read __APP_VERSION__ the way the React headers do. The landing
+      // page is the first thing anyone sees — and what they land on when
+      // something is wrong — so it shows the version too, via a placeholder
+      // swapped here at build time.
+      name: 'landing-page-version',
+      transformIndexHtml(html: string) {
+        return html.replace(/%APP_VERSION%/g, pkg.version)
+      },
+    },
+    {
       name: 'emit-web-manifest',
       generateBundle() {
         this.emitFile({
