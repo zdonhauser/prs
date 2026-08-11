@@ -1,0 +1,171 @@
+// The DOM render of an event flyer. Mirrors PreviewCanvas.tsx's shape and
+// idiom (see conventions brief §5): a pure presentational component fed a
+// template + the coordinator's field values, with `--f-*` custom
+// properties set as inline style from the template's own `colors` object
+// (the flyer's theming source is per-template data, not a fixed `data-theme`
+// id — see conventions brief §4).
+import { useState } from 'react'
+import type React from 'react'
+import { coverRect, clampPan } from '@/domain/photoGeometry'
+import { logoSrc } from '@/config/themes'
+import prsMarkRaw from '@/assets/prs-mark.svg?raw'
+import { CalendarIcon, ClockIcon, MapPinIcon, InfoIcon } from './icons'
+import type { FlyerField, FlyerTemplate } from '@/types'
+
+interface FlyerCanvasProps {
+  template: FlyerTemplate
+  values: Record<FlyerField, string>
+}
+
+// The photo clip-circle's bounding box (page px) — center (608, 195),
+// radius 227, fitted visually against the hi-res reference (the visual
+// spec flagged this pair as "best found visually, not analytically").
+// Kept in sync by hand with the matching literals in flyer.css's
+// `.flyer-photo` rule, the same "measured box as both CSS and a constant"
+// pattern page.css's PHOTO_ZONE already uses (conventions brief §3) —
+// needed here because coverRect/clampPan take the box dimensions as plain
+// numbers, not a CSS reference.
+const PHOTO_BOX = { left: 381, top: -32, size: 454 }
+
+// Watermark base placement/size at watermark.scale === 1, x === y === 0 —
+// the reference's measured "~470px across, centered near (120, 250)".
+const WATERMARK_BASE_SIZE = 470
+const WATERMARK_BASE_CENTER = { x: 120, y: 250 }
+
+// The hero's bottom edge: a circular arc of a large circle whose center
+// sits above the page (visual spec's "hero shape" section). Fixed layout
+// geometry, not template data — every flyer uses the same hero silhouette.
+// Reused both as the hero fill's SVG path `d` and, verbatim, as a CSS
+// clip-path on a same-sized wrapper so the watermark is clipped to the
+// identical silhouette without a second source of truth for the numbers.
+const HERO_PATH = 'M0,0 H816 V234 A780,780 0 0 1 0,355 Z'
+
+interface DetailRow {
+  field: FlyerField
+  label: string
+  Icon: React.ComponentType<{ className?: string }>
+  modifier: string
+}
+
+const DETAIL_ROWS: DetailRow[] = [
+  { field: 'date', label: 'DATE:', Icon: CalendarIcon, modifier: 'flyer-detail--date' },
+  { field: 'time', label: 'TIME:', Icon: ClockIcon, modifier: 'flyer-detail--time' },
+  { field: 'location', label: 'LOCATION:', Icon: MapPinIcon, modifier: 'flyer-detail--location' },
+  { field: 'additionalInfo', label: 'ADDITIONAL INFORMATION:', Icon: InfoIcon, modifier: 'flyer-detail--additional-info' },
+]
+
+export function FlyerCanvas({ template, values }: FlyerCanvasProps) {
+  const { colors, watermark, photo, headline } = template
+  const hasPhoto = photo.src !== ''
+
+  // Natural photo dimensions aren't part of the template schema (unlike
+  // `Photo.naturalW/H` in the story app — see report's "concerns" section),
+  // so they're measured off the actual <img> once it loads. Keyed by src
+  // so swapping templates can't apply a stale size to a new image; this is
+  // rendering-measurement state, not business/form state, the same
+  // category PreviewCanvas already accepts via useAutoFitText's internal
+  // useState.
+  const [photoSize, setPhotoSize] = useState<{ src: string; w: number; h: number } | null>(null)
+  const naturalW = photoSize?.src === photo.src ? photoSize.w : undefined
+  const naturalH = photoSize?.src === photo.src ? photoSize.h : undefined
+
+  const cssVars = {
+    '--f-hero-bg': colors.heroBg,
+    '--f-hero-pattern': colors.heroPattern,
+    '--f-accent': colors.accent,
+    '--f-ring': colors.ring,
+    '--f-subtitle': colors.subtitle,
+    '--f-icon-circle': colors.iconCircle,
+    '--f-body-text': colors.bodyText,
+    '--f-footer-bg': colors.footerBg,
+  } as React.CSSProperties
+
+  const wmSize = WATERMARK_BASE_SIZE * watermark.scale
+  const watermarkStyle: React.CSSProperties = {
+    left: WATERMARK_BASE_CENTER.x + watermark.x - wmSize / 2,
+    top: WATERMARK_BASE_CENTER.y + watermark.y - wmSize / 2,
+    width: wmSize,
+    height: wmSize,
+    opacity: watermark.opacity,
+    color: 'var(--f-hero-pattern)',
+  }
+
+  const photoRect = coverRect(naturalW, naturalH, PHOTO_BOX.size, PHOTO_BOX.size)
+  const { x: panX, y: panY } = clampPan(naturalW, naturalH, PHOTO_BOX.size, PHOTO_BOX.size, 0, 0, 1)
+
+  return (
+    <div className="flyer" style={cssVars}>
+      {/* Hero shape + watermark */}
+      <svg className="flyer-hero" viewBox="0 0 816 1056" preserveAspectRatio="none" aria-hidden="true">
+        <path className="flyer-hero-shape" d={HERO_PATH} />
+      </svg>
+      <div className="flyer-hero-clip" style={{ clipPath: `path('${HERO_PATH}')` }}>
+        <div className="flyer-watermark" style={watermarkStyle} dangerouslySetInnerHTML={{ __html: prsMarkRaw }} />
+      </div>
+
+      {/* Eyebrow + headline */}
+      <div className="flyer-eyebrow">{template.eyebrow}</div>
+      <div className="flyer-headline">
+        {headline.map((line, i) => (
+          <div key={i} className="flyer-headline-line">
+            {line}
+          </div>
+        ))}
+      </div>
+
+      {/* Teal ring (drawn first so the opaque photo box paints over the
+          part of the ring it covers) + photo circle */}
+      <div className="flyer-ring" />
+      <div className="flyer-photo" style={{ left: PHOTO_BOX.left, top: PHOTO_BOX.top, width: PHOTO_BOX.size, height: PHOTO_BOX.size }}>
+        {hasPhoto && (
+          <img
+            src={photo.src}
+            alt=""
+            onLoad={(e) => {
+              const img = e.currentTarget
+              setPhotoSize({ src: photo.src, w: img.naturalWidth, h: img.naturalHeight })
+            }}
+            style={{
+              left: photoRect.left,
+              top: photoRect.top,
+              width: photoRect.width,
+              height: photoRect.height,
+              transform: `translate(${panX}px, ${panY}px)`,
+              transformOrigin: 'center center',
+            }}
+          />
+        )}
+      </div>
+
+      {/* Subtitle + ornament + description */}
+      <div className="flyer-subtitle">{template.subtitle}</div>
+      <div className="flyer-ornament">
+        <div className="flyer-ornament-rule" />
+        <div className="flyer-ornament-dot" />
+        <div className="flyer-ornament-rule" />
+      </div>
+      <div className="flyer-description">{template.description}</div>
+
+      {/* Detail rows */}
+      {DETAIL_ROWS.map(({ field, label, Icon, modifier }) => (
+        <div key={field} className={`flyer-detail ${modifier}`}>
+          <div className="flyer-detail-icon">
+            <Icon className="flyer-detail-icon-glyph" />
+          </div>
+          <div className="flyer-detail-label">
+            {label}
+            {values[field] && <span className="flyer-detail-value"> {values[field]}</span>}
+          </div>
+        </div>
+      ))}
+
+      {/* Footer */}
+      <div className="flyer-footer">
+        <img src={logoSrc.white} alt="Portfolio Resident Services" className="flyer-footer-logo" />
+        <div className="flyer-footer-label">
+          RSC EMAIL:{values.rscEmail && <span className="flyer-detail-value"> {values.rscEmail}</span>}
+        </div>
+      </div>
+    </div>
+  )
+}

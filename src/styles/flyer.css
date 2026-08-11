@@ -1,0 +1,309 @@
+/* ── Flyer: base styles ─────────────────────────────── */
+/* Mirrors src/styles/page.css's structure/idiom: one root element sized to
+   the printed page, everything inside it absolutely positioned against
+   that root using the visual spec's measured page-px values. Unlike the
+   story page's `--t-*` theme vars (fed by a fixed `data-theme` id + CSS
+   blocks in themes.css), the flyer's `--f-*` vars are fed by a template's
+   own `colors` object as inline styles from FlyerCanvas — see the
+   conventions brief §4 for why the mechanism differs. */
+
+.flyer {
+  position: relative;
+  width: var(--page-w);
+  height: var(--page-h);
+  background: white;
+  overflow: hidden;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+
+  /* Fallback --f-* values. A valid FlyerTemplate always supplies every
+     colors.* key (validateTemplate enforces this), so these never
+     normally apply — they exist only as a safety net, the same role the
+     default (Classic Blue) block plays on bare `.page` in page.css. */
+  --f-hero-bg: #2259a9;
+  --f-hero-pattern: #4372b6;
+  --f-accent: #efda87;
+  --f-ring: #0e97c3;
+  --f-subtitle: #2259a9;
+  --f-icon-circle: #2259a9;
+  --f-body-text: #262626;
+  --f-footer-bg: #2259a9;
+}
+
+/* ── Flyer: hero shape ───────────────────────────────── */
+
+.flyer-hero {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--page-w);
+  height: var(--page-h);
+  z-index: 0;
+}
+
+.flyer-hero-shape {
+  fill: var(--f-hero-bg);
+}
+
+/* Full-page wrapper clipped to the same silhouette as .flyer-hero-shape,
+   so the watermark never paints past the hero's curved bottom edge into
+   the white body below. Sized to the whole page (not just the watermark's
+   own box) because CSS clip-path coordinates resolve against the clipped
+   element's own border box — clipping the watermark's own (smaller,
+   offset) box would shift the silhouette instead of aligning it. */
+.flyer-hero-clip {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.flyer-watermark {
+  position: absolute;
+  /* left/top/width/height/opacity set inline from template.watermark */
+}
+
+.flyer-watermark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Flyer: photo + ring ─────────────────────────────── */
+
+/* Same center as .flyer-photo, straddling its edge: the ring's box is the
+   photo's box expanded by the stroke width on every side, so a border-box
+   border sits half outside / half inside the photo's own circle. Drawn
+   *above* the photo (z-index) rather than under it — visual inspection of
+   the hi-res reference (crops/hi_ring2.png during development) showed the
+   ring crossing over photo content near the bottom of the circle, and
+   showing plainly against white below the hero's edge, which only a
+   top-most independent stroke explains. (The spec's "two different-radius
+   circles, ring under" model was the starting guess; tuning against the
+   reference replaced it with this single straddling ring.) */
+.flyer-ring {
+  position: absolute;
+  left: 377px;
+  top: -36px;
+  width: 462px;
+  height: 462px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 7px solid var(--f-ring);
+  z-index: 4;
+}
+
+.flyer-photo {
+  position: absolute;
+  left: 381px;
+  top: -32px;
+  width: 454px;
+  height: 454px;
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 3;
+}
+
+.flyer-photo img {
+  position: absolute;
+  display: block;
+  max-width: none;
+}
+
+/* ── Flyer: eyebrow + headline ───────────────────────── */
+
+.flyer-eyebrow {
+  position: absolute;
+  top: 32px;
+  left: 42px;
+  width: 600px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--f-accent);
+  z-index: 4;
+}
+
+.flyer-headline {
+  position: absolute;
+  top: 140px;
+  left: 76px;
+  width: 560px;
+  z-index: 4;
+  /* Above the photo (z-index 3) — the reference's headline legibly
+     overlaps the photo circle's left edge rather than being clipped by
+     it (verified against the hi-res reference: the last few letters of
+     "COMMUNITIES" sit over photo pixels, not hero blue). */
+}
+
+.flyer-headline-line {
+  /* Reference headline is a very heavy, tightly-tracked, slightly
+     condensed display face. Try the named condensed system face first
+     (macOS/Windows both ship a "Helvetica Neue Condensed Bold"); the
+     scaleX fallback approximates the same condensed look on platforms
+     where that face doesn't bind, using Arial Black's available weight. */
+  font-family: 'Helvetica Neue Condensed Bold', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 800;
+  font-size: 97px;
+  line-height: 79px;
+  letter-spacing: -1px;
+  text-transform: uppercase;
+  color: var(--f-accent);
+  white-space: nowrap;
+  display: inline-block;
+  transform: scaleX(0.9);
+  transform-origin: left center;
+}
+
+/* ── Flyer: subtitle + ornament ──────────────────────── */
+
+.flyer-subtitle {
+  position: absolute;
+  top: 432px;
+  left: 0;
+  width: var(--page-w);
+  text-align: center;
+  /* The reference's subtitle/description use a rounded geometric face
+     (reads like Poppins/Quicksand) distinct from the headline's blockier
+     grotesque. No such webfont is bundled in this repo (adding one is a
+     dependency decision out of this task's scope — see report), so this
+     falls back through the roundest widely-installed system faces. */
+  font-family: 'Poppins', -apple-system, 'Century Gothic', 'Trebuchet MS', Verdana, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--f-subtitle);
+  z-index: 4;
+}
+
+.flyer-ornament {
+  position: absolute;
+  top: 473px;
+  left: 0;
+  width: var(--page-w);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 4;
+}
+
+.flyer-ornament-rule {
+  width: 56px;
+  height: 2px;
+  /* Not template-controlled (see FlyerColors' doc comment) — a paled tint
+     of the ring color, derived here via opacity rather than a separate
+     schema key. */
+  background: var(--f-ring);
+  opacity: 0.45;
+}
+
+.flyer-ornament-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--f-ring);
+}
+
+/* ── Flyer: description ──────────────────────────────── */
+
+.flyer-description {
+  position: absolute;
+  top: 489px;
+  left: 108px;
+  width: 600px;
+  text-align: center;
+  /* Same rounded-face fallback as .flyer-subtitle — see its comment. */
+  font-family: 'Poppins', -apple-system, 'Century Gothic', 'Trebuchet MS', Verdana, sans-serif;
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--f-body-text);
+  z-index: 4;
+}
+
+/* ── Flyer: detail rows ───────────────────────────────── */
+
+.flyer-detail {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 4;
+}
+
+/* Measured off the hi-res reference directly (pixel-scanned disc edges —
+   diameter ~58px, not the visual spec's ~46px starting guess). */
+.flyer-detail--date { top: 583px; left: 82px; }
+.flyer-detail--time { top: 583px; left: 416px; }
+.flyer-detail--location { top: 667px; left: 82px; }
+.flyer-detail--additional-info { top: 752px; left: 82px; }
+
+.flyer-detail-icon {
+  flex-shrink: 0;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--f-icon-circle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flyer-detail-icon-glyph {
+  width: 30px;
+  height: 30px;
+  color: var(--f-accent);
+}
+
+.flyer-detail-label {
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  /* Not template-controlled (see FlyerColors' doc comment) — derives from
+     bodyText rather than its own schema key. */
+  color: var(--f-body-text);
+}
+
+.flyer-detail-value {
+  font-weight: 600;
+  text-transform: none;
+}
+
+/* ── Flyer: footer ────────────────────────────────────── */
+
+.flyer-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: var(--page-w);
+  height: 115px;
+  background: var(--f-footer-bg);
+  z-index: 4;
+}
+
+.flyer-footer-logo {
+  position: absolute;
+  left: 64px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
+
+.flyer-footer-label {
+  position: absolute;
+  left: 220px;
+  /* Aligned with the top line of the logo's stacked wordmark, not centered
+     against the whole icon — matches the reference (measured directly,
+     page y≈967; .flyer-footer starts at page y=941 (bottom:0 of a
+     1056-tall root minus its own 115px height), so relative to *this*
+     element's own positioning context the offset is 967-941=26). */
+  top: 26px;
+  font-size: 15px;
+  font-weight: 800;
+  text-transform: uppercase;
+  /* Fixed, not template-controlled (see FlyerColors' doc comment) — the
+     footer band is always dark, so its label is always white. */
+  color: #ffffff;
+}
