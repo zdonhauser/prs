@@ -287,3 +287,17 @@
   width: 100%;
   margin-top: 4px;
 }
+
+.export-done-head {
+  font-size: 12px !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #1a202c !important;
+  margin: 16px 0 8px !important;
+}
+
+.export-done {
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}

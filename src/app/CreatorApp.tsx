@@ -23,6 +23,20 @@ const PREVIEW_VALUES = emptyValues()
 // The webmaster who adds exported templates to the site.
 const WEBMASTER_EMAIL = 'zac@donrey.dev'
 
+// GitHub's upload UI, deep-linked to the exact folder templates live in. Its
+// commit step offers "Create a new branch for this commit and start a pull
+// request", so an author with repo access goes from exported file to open PR
+// without touching git.
+//
+// Not the fully automatic version, deliberately. GitHub's prefilled-new-file
+// URL (/new/BRANCH?filename=&value=) would need the template's contents in
+// the query string: ours is 64,652 characters, ~67,000 urlencoded, against a
+// practical URL ceiling near 8,000 — the embedded photo alone blows it out.
+// Opening a PR directly from the page instead would need either a GitHub
+// token living in the browser or a backend to hold one, and this app has
+// deliberately had neither.
+const GITHUB_UPLOAD_URL = 'https://github.com/zdonhauser/prs/upload/main/src/config/flyerTemplates'
+
 // Pre-writes the handoff email. A page cannot attach a file to a mailto — the
 // spec has no attachment parameter and every mail client ignores attempts —
 // so the body tells the author to attach it themselves rather than pretending
@@ -361,25 +375,40 @@ export default function CreatorApp() {
             <h3>Template saved</h3>
             <p className="export-done-file">{exportedFile}</p>
             <p>
-              Saving the file doesn't put it in the Event Flyer Builder yet — coordinators
-              won't see this template until it's added to the site.
+              Coordinators won't see this template until it's added to the site. Two ways to
+              finish:
             </p>
-            <p>
-              <strong>Send <code>{exportedFile}</code> to the webmaster</strong> and ask them to
-              add it to the Event Flyer Builder.
+
+            <p className="export-done-head">Add it yourself</p>
+            <a
+              className="btn-primary-sm export-done-mail"
+              href={GITHUB_UPLOAD_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open GitHub upload page
+            </a>
+            <p className="export-done-note">
+              Drag <code>{exportedFile}</code> onto that page, then at the bottom choose{' '}
+              <strong>&ldquo;Create a new branch for this commit and start a pull
+              request&rdquo;</strong> and click <strong>Propose changes</strong>. You'll need a
+              GitHub account with access to the repository.
             </p>
-            <a className="btn-primary-sm export-done-mail" href={mailtoHref(exportedFile, template)}>
+
+            <p className="export-done-head">Or hand it off</p>
+            <a className="btn-ghost export-done-mail" href={mailtoHref(exportedFile, template)}>
               Email the webmaster
             </a>
             <p className="export-done-note">
-              That opens your mail app with the message written — <strong>attach{' '}
-              <code>{exportedFile}</code> yourself before sending</strong>, since a web page
-              isn't allowed to attach files to an email for you. On an iPad the file is
-              wherever you saved it, usually Files &rsaquo; Downloads.
+              Opens your mail app with the message written. <strong>Attach{' '}
+              <code>{exportedFile}</code> before sending</strong> — a web page isn't allowed to
+              attach files for you. On an iPad it's wherever you saved it, usually Files
+              &rsaquo; Downloads.
             </p>
+
             <p className="export-done-note">
-              Once it's added, it shows up in the builder's template list under{' '}
-              {formatMonth(template.month)}.
+              Either way it appears in the builder under {formatMonth(template.month)} once
+              it's live.
             </p>
             <button type="button" className="btn-ghost" onClick={() => setExportedFile(null)}>Close</button>
           </div>
