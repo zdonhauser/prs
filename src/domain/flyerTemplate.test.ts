@@ -9,6 +9,7 @@ import {
   currentMonth,
   isFieldEditable,
   emptyValues,
+  pickDefaultTemplateId,
 } from './flyerTemplate'
 
 // Loaded via import.meta.glob (not a static import of the config module) so
@@ -206,5 +207,33 @@ describe('makeDefaultTemplate', () => {
   it('has the default watermark', () => {
     const template = makeDefaultTemplate()
     expect(template.watermark).toEqual({ opacity: 1, scale: 1, x: 0, y: 0 })
+  })
+})
+
+describe('pickDefaultTemplateId', () => {
+  // Sorted by month ascending, as `flyerTemplates` is.
+  const templates = [
+    validTemplate({ id: 'jun', month: '2026-06' }),
+    validTemplate({ id: 'aug', month: '2026-08' }),
+    validTemplate({ id: 'dec', month: '2026-12' }),
+  ].map((t) => validateTemplate(t))
+
+  it('returns the template for the current month when one exists', () => {
+    expect(pickDefaultTemplateId(templates, new Date(2026, 7, 15))).toBe('aug')
+  })
+
+  it('falls back to the most recent template not in the future', () => {
+    // September: no September template, so August rather than December.
+    expect(pickDefaultTemplateId(templates, new Date(2026, 8, 1))).toBe('aug')
+    // The following January: December is the most recent.
+    expect(pickDefaultTemplateId(templates, new Date(2027, 0, 20))).toBe('dec')
+  })
+
+  it('falls back to the first template when every one is in the future', () => {
+    expect(pickDefaultTemplateId(templates, new Date(2026, 0, 5))).toBe('jun')
+  })
+
+  it('returns an empty string when there are no templates', () => {
+    expect(pickDefaultTemplateId([], new Date(2026, 7, 15))).toBe('')
   })
 })

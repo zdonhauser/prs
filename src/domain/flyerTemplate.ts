@@ -197,6 +197,31 @@ export function isFieldEditable(template: FlyerTemplate, field: FlyerField): boo
   return template.editableFields.includes(field)
 }
 
+/**
+ * Picks the template a coordinator should land on: one for the current month
+ * if it exists, else the most recent one not in the future, else the first.
+ * `''` when there are none.
+ *
+ * `templates` is expected sorted by month ascending, as `flyerTemplates` is.
+ *
+ * This lives here, taking its inputs as arguments, so all three branches can
+ * be tested. Its caller in `config/` reads a module-level list baked in at
+ * import time, which only ever exercises whichever branch today's date and
+ * the currently bundled templates happen to select.
+ */
+export function pickDefaultTemplateId(templates: FlyerTemplate[], now: Date = new Date()): string {
+  if (templates.length === 0) return ''
+
+  const current = currentMonth(now)
+  const exactMatch = templates.find((template) => template.month === current)
+  if (exactMatch) return exactMatch.id
+
+  const notFuture = templates.filter((template) => compareMonth(template.month, current) <= 0)
+  if (notFuture.length > 0) return notFuture[notFuture.length - 1].id
+
+  return templates[0].id
+}
+
 /** All five flyer fields, defaulted to empty strings. */
 export function emptyValues(): Record<FlyerField, string> {
   return {

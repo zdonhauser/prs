@@ -9,7 +9,7 @@
 // what validateTemplate expects and no `resolveJsonModule`/`.d.ts` hop is
 // needed for this to type-check under `strict`.
 import type { FlyerTemplate } from '@/types'
-import { validateTemplate, compareMonth, currentMonth } from '@/domain/flyerTemplate'
+import { validateTemplate, compareMonth, pickDefaultTemplateId } from '@/domain/flyerTemplate'
 
 const templateModules = import.meta.glob('./flyerTemplates/*.json', {
   eager: true,
@@ -39,18 +39,12 @@ export function templateById(id: string): FlyerTemplate | undefined {
  * The id of a template whose month equals the current month, if one
  * exists; otherwise the most recent template not in the future; otherwise
  * the first template. `''` if there are no templates at all.
+ *
+ * The selection itself is `pickDefaultTemplateId` in the domain layer, where
+ * it takes the template list as an argument and all three of its branches
+ * can be tested. Here the list is a module-level const baked in at import
+ * time, so only whichever branch today's date selects would ever run.
  */
 export function defaultTemplateId(now: Date = new Date()): string {
-  if (flyerTemplates.length === 0) return ''
-
-  const current = currentMonth(now)
-  const exactMatch = flyerTemplates.find((template) => template.month === current)
-  if (exactMatch) return exactMatch.id
-
-  // flyerTemplates is sorted by month ascending, so the last entry whose
-  // month isn't in the future is the most recent one.
-  const notFuture = flyerTemplates.filter((template) => compareMonth(template.month, current) <= 0)
-  if (notFuture.length > 0) return notFuture[notFuture.length - 1].id
-
-  return flyerTemplates[0].id
+  return pickDefaultTemplateId(flyerTemplates, now)
 }
