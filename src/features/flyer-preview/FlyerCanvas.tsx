@@ -4,7 +4,7 @@
 // properties set as inline style from the template's own `colors` object
 // (the flyer's theming source is per-template data, not a fixed `data-theme`
 // id — see conventions brief §4).
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type React from 'react'
 import { coverRect, clampPan } from '@/domain/photoGeometry'
 import { logoSrc } from '@/config/themes'
@@ -35,9 +35,12 @@ const WATERMARK_BASE_CENTER = { x: 120, y: 250 }
 // The hero's bottom edge: a circular arc of a large circle whose center
 // sits above the page (visual spec's "hero shape" section). Fixed layout
 // geometry, not template data — every flyer uses the same hero silhouette.
-// Reused both as the hero fill's SVG path `d` and, verbatim, as a CSS
-// clip-path on a same-sized wrapper so the watermark is clipped to the
-// identical silhouette without a second source of truth for the numbers.
+// Reused both as the hero fill's SVG path `d` and, verbatim, as an SVG
+// <clipPath> the watermark is clipped against, so the watermark is clipped
+// to the identical silhouette without a second source of truth for the
+// numbers. (Previously a CSS `clip-path` on a same-sized wrapper div — see
+// the watermark's own render-time comment below for why that didn't
+// survive the PDF export's html2canvas raster pass.)
 const HERO_PATH = 'M0,0 H816 V234 A780,780 0 0 1 0,355 Z'
 
 interface DetailRow {
@@ -81,27 +84,60 @@ export function FlyerCanvas({ template, values }: FlyerCanvasProps) {
   } as React.CSSProperties
 
   const wmSize = WATERMARK_BASE_SIZE * watermark.scale
-  const watermarkStyle: React.CSSProperties = {
-    left: WATERMARK_BASE_CENTER.x + watermark.x - wmSize / 2,
-    top: WATERMARK_BASE_CENTER.y + watermark.y - wmSize / 2,
-    width: wmSize,
-    height: wmSize,
-    opacity: watermark.opacity,
-    color: 'var(--f-hero-pattern)',
-  }
+  const wmLeft = WATERMARK_BASE_CENTER.x + watermark.x - wmSize / 2
+  const wmTop = WATERMARK_BASE_CENTER.y + watermark.y - wmSize / 2
+
+  // html2canvas doesn't support the CSS `clip-path` property (see below),
+  // so the id needs to be unique per instance for the SVG <clipPath> to
+  // still resolve correctly if two flyers are ever mounted on one page.
+  const watermarkClipId = `flyer-watermark-clip-${useId().replace(/:/g, '')}`
 
   const photoRect = coverRect(naturalW, naturalH, PHOTO_BOX.size, PHOTO_BOX.size)
   const { x: panX, y: panY } = clampPan(naturalW, naturalH, PHOTO_BOX.size, PHOTO_BOX.size, 0, 0, 1)
 
   return (
     <div className="flyer" style={cssVars}>
-      {/* Hero shape + watermark */}
+      {/* Hero shape + watermark. The watermark lives inside this same
+          inline <svg> now, clipped by an SVG <clipPath> built from the same
+          HERO_PATH the hero fill uses — not a CSS clip-path on a wrapper
+          div, because html2canvas's raster pass doesn't support that CSS
+          property and used to let the mark bleed past the hero's curved
+          edge in the exported PDF (the preview, a real browser, always
+          clipped it correctly). An <svg>'s *native* clipPath is honoured by
+          html2canvas because it hands the whole <svg> subtree to the
+          browser to rasterize as a self-contained image, rather than
+          painting it node-by-node itself. */}
       <svg className="flyer-hero" viewBox="0 0 816 1056" preserveAspectRatio="none" aria-hidden="true">
         <path className="flyer-hero-shape" d={HERO_PATH} />
+        <defs>
+          <clipPath id={watermarkClipId}>
+            <path d={HERO_PATH} />
+          </clipPath>
+        </defs>
+        <g clipPath={`url(#${watermarkClipId})`}>
+          {/* `color` is set to the template's already-resolved hex
+              (colors.heroPattern) rather than `var(--f-hero-pattern)`,
+              which is defined on the outer `.flyer` element, outside this
+              <svg> subtree. Tested both directly (exported a PDF with each,
+              rendered it back to an image, diffed): with the installed
+              html2canvas version they come out byte-identical, so the var
+              does get resolved correctly here too. Keeping the literal hex
+              anyway rather than reverting this note to "either works" —
+              it doesn't depend on html2canvas's own undocumented behavior
+              for a custom property inherited from outside the serialized
+              <svg> fragment, which a future html2canvas version is free to
+              change without notice. */}
+          <svg
+            x={wmLeft}
+            y={wmTop}
+            width={wmSize}
+            height={wmSize}
+            opacity={watermark.opacity}
+            style={{ color: colors.heroPattern }}
+            dangerouslySetInnerHTML={{ __html: prsMarkRaw }}
+          />
+        </g>
       </svg>
-      <div className="flyer-hero-clip" style={{ clipPath: `path('${HERO_PATH}')` }}>
-        <div className="flyer-watermark" style={watermarkStyle} dangerouslySetInnerHTML={{ __html: prsMarkRaw }} />
-      </div>
 
       {/* Eyebrow + headline */}
       <div className="flyer-eyebrow">{template.eyebrow}</div>

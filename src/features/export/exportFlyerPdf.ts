@@ -51,16 +51,30 @@ import type { FlyerTemplate } from '@/types'
 // requirement in the same brief section requires.
 // ─────────────────────────────────────────────────────────────────────────
 
+// Raster scale for the two small alpha-PNG layers (the photo circle and the
+// headline patch) — deliberately lower than the background raster's own
+// `scale: 4`. At 4x, a CSS px maps to 4 output px, i.e. 4 * 96 = 384 DPI —
+// well past the ~300 DPI print ceiling (finer detail than that is invisible
+// on paper) and expensive in bytes, since both layers are stored as
+// uncompressed-ish raw pixels (PNG for real alpha; jsPDF's addImage without
+// a `compression` argument stores raw RGB, and even with Flate compression
+// applied, photographic pixels don't compress well). 3x -> 288 DPI, still
+// comfortably sharp at 100% zoom, at 9/16 the pixel count of 4x. Does not
+// apply to the background layer (JPEG, `scale: 4`, unchanged — it's already
+// the same quality/size trade at a good size and the brief asks not to
+// touch it).
+const DETAIL_RASTER_SCALE = 3
+
 // Renders the live `<img>` cover-fit into a `size`×`size` offscreen canvas,
 // clipped to the inscribed circle so the corners stay transparent (kept as
 // real alpha by exporting PNG, not JPEG) — the flyer's photo has no crop
 // UI, so pan/zoom are always 0/0/1, unlike the story's preRenderPhoto.
 function preRenderCircularPhoto(img: HTMLImageElement, naturalW: number, naturalH: number, size: number): HTMLCanvasElement {
   const offscreen = document.createElement('canvas')
-  offscreen.width = size * 4
-  offscreen.height = size * 4
+  offscreen.width = size * DETAIL_RASTER_SCALE
+  offscreen.height = size * DETAIL_RASTER_SCALE
   const ctx = offscreen.getContext('2d')!
-  ctx.scale(4, 4)
+  ctx.scale(DETAIL_RASTER_SCALE, DETAIL_RASTER_SCALE)
 
   const rect = coverRect(naturalW, naturalH, size, size)
   const { x: panX, y: panY } = clampPan(naturalW, naturalH, size, size, 0, 0, 1)
@@ -189,7 +203,10 @@ export async function exportFlyerPdf(flyerElement: HTMLElement | null, { templat
     const { xIn, yIn, wIn } = rectToPageInches(photoBox.getBoundingClientRect(), pageRect, domScale)
     const sizePx = wIn * 96 // .flyer-photo is always a square box
     const canvas = preRenderCircularPhoto(img, img.naturalWidth, img.naturalHeight, sizePx)
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', xIn, yIn, wIn, wIn)
+    // 'MEDIUM' Flate-compresses the raw pixel data jsPDF would otherwise
+    // store verbatim — see DETAIL_RASTER_SCALE's comment for why this alone
+    // isn't enough for a photographic image and the scale is lowered too.
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', xIn, yIn, wIn, wIn, undefined, 'MEDIUM')
   }
 
   // ── Layer 2.5: the headline, its own raster patch drawn after the photo ──
@@ -201,14 +218,14 @@ export async function exportFlyerPdf(flyerElement: HTMLElement | null, { templat
   const headline = flyerElement.querySelector<HTMLElement>('.flyer-headline')
   if (headline) {
     const headlineCanvas = await html2canvas(headline, {
-      scale: 4,
+      scale: DETAIL_RASTER_SCALE,
       useCORS: true,
       allowTaint: true,
       backgroundColor: null,
       logging: false,
     })
     const { xIn, yIn, wIn, hIn } = rectToPageInches(headline.getBoundingClientRect(), pageRect, domScale)
-    pdf.addImage(headlineCanvas.toDataURL('image/png'), 'PNG', xIn, yIn, wIn, hIn)
+    pdf.addImage(headlineCanvas.toDataURL('image/png'), 'PNG', xIn, yIn, wIn, hIn, undefined, 'MEDIUM')
   }
 
   // ── Layer 3: the teal ring, vector circle stroke drawn after the photo ──

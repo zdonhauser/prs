@@ -44,28 +44,11 @@
   fill: var(--f-hero-bg);
 }
 
-/* Full-page wrapper clipped to the same silhouette as .flyer-hero-shape,
-   so the watermark never paints past the hero's curved bottom edge into
-   the white body below. Sized to the whole page (not just the watermark's
-   own box) because CSS clip-path coordinates resolve against the clipped
-   element's own border box — clipping the watermark's own (smaller,
-   offset) box would shift the silhouette instead of aligning it. */
-.flyer-hero-clip {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-}
-
-.flyer-watermark {
-  position: absolute;
-  /* left/top/width/height/opacity set inline from template.watermark */
-}
-
-.flyer-watermark svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
+/* The watermark used to live here as a DOM element clipped with a CSS
+   clip-path. It now lives inside the hero's inline <svg>, clipped by an SVG
+   <clipPath>, because html2canvas does not implement clip-path and the PDF
+   export was painting a petal and a dot onto the white body below the hero.
+   Its placement and sizing are set in FlyerCanvas from template.watermark. */
 
 /* ── Flyer: photo + ring ─────────────────────────────── */
 
