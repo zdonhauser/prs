@@ -437,6 +437,67 @@
   margin-top: 4px;
 }
 
+/* ── Disclosures (Advanced colour options, Photo Shape & Position,
+   Watermark) ────────────────────────────────────────────────────────── */
+
+.form-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--blue);
+  list-style: none;
+}
+
+/* Chrome/Safari render a default triangle marker via this pseudo-element
+   rather than (only) the ::marker Firefox uses — list-style: none above
+   handles Firefox, this handles the rest, and a custom ▸/▾ glyph (below)
+   replaces both so the marker looks the same everywhere. */
+.form-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.form-disclosure > summary::before {
+  content: '▸';
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.form-disclosure[open] > summary::before {
+  content: '▾';
+}
+
+/* A section that starts with its own <h2> (Colors) needs the disclosure
+   pulled back up under it instead of inheriting form-section's spacing
+   twice; a disclosure that stands in for the whole section's header
+   (Photo Shape & Position, Watermark) doesn't. */
+h2 + .form-disclosure {
+  margin-top: -2px;
+}
+
+.form-disclosure-content {
+  padding-top: 14px;
+}
+
+/* Small pill next to a closed disclosure's summary, shown only when its
+   contents differ from the template's defaults — see CreatorPanel's
+   ModifiedBadge. Gold, not blue, so it reads as a status flag rather than
+   part of the (already blue) summary label. */
+.form-disclosure-modified {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #7a5c00;
+  background: var(--gold);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
 .field-checkbox-row {
   display: flex;
   align-items: center;

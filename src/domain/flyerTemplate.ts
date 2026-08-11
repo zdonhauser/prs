@@ -1,7 +1,7 @@
 // Pure flyer-template helpers: validation, defaults, and month grouping.
 // No React, no DOM, no browser APIs — see conventions brief §1.
 
-import type { FlyerColors, FlyerField, FlyerTemplate, PhotoBox } from '@/types'
+import type { DetailField, FlyerColors, FlyerField, FlyerTemplate, FooterField, PhotoBox } from '@/types'
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
 
@@ -18,16 +18,32 @@ const COLOR_KEYS: Array<keyof FlyerColors> = [
 
 // The fixed field order every form/checklist in the suite presents fields
 // in — exported so FlyerFormPanel, CreatorPanel and CreatorApp share one
-// list instead of each keeping its own verbatim copy.
-export const FLYER_FIELDS: readonly FlyerField[] = ['date', 'time', 'location', 'additionalInfo', 'rscEmail']
+// list instead of each keeping its own verbatim copy. The last three
+// (phone/address/website) joined rscEmail as footer fields; they render
+// only when both editable AND non-blank (see `layoutFooterFields`), unlike
+// the four detail-row fields before them, which show a blank label instead
+// (see `layoutDetailRows`).
+export const FLYER_FIELDS: readonly FlyerField[] = [
+  'date',
+  'time',
+  'location',
+  'additionalInfo',
+  'rscEmail',
+  'phone',
+  'address',
+  'website',
+]
 
-/** Display labels for the five flyer fields, shared by the same three call sites as `FLYER_FIELDS`. */
+/** Display labels for the eight flyer fields, shared by the same three call sites as `FLYER_FIELDS`. */
 export const FLYER_FIELD_LABELS: Record<FlyerField, string> = {
   date: 'Date',
   time: 'Time',
   location: 'Location',
   additionalInfo: 'Additional Information',
   rscEmail: 'RSC Email',
+  phone: 'Phone',
+  address: 'Address',
+  website: 'Website',
 }
 
 /**
@@ -47,6 +63,32 @@ export const FLYER_FIELD_LABELS: Record<FlyerField, string> = {
  * task-7-report.md for the full measurement.
  */
 export const DEFAULT_PHOTO_BOX: PhotoBox = { left: 401, top: -32, width: 535, height: 438 }
+
+/**
+ * The colors `makeDefaultTemplate` starts a new template from — also the
+ * baseline the creator's "Advanced colour options" disclosure compares
+ * against to decide whether to show its "Modified" marker: a fresh
+ * template shouldn't read as modified before its author has touched
+ * anything, even though these values don't happen to equal any single
+ * entry in `flyerPalettes` (they predate the palette picker).
+ */
+export const DEFAULT_COLORS: FlyerColors = {
+  heroBg: '#2259a9',
+  heroPattern: '#4372b6',
+  accent: '#efda87',
+  ring: '#0e97c3',
+  subtitle: '#2259a9',
+  iconCircle: '#2259a9',
+  bodyText: '#262626',
+  footerBg: '#2259a9',
+}
+
+/**
+ * The watermark settings `makeDefaultTemplate` starts a new template from —
+ * also the baseline the creator's "Watermark" disclosure compares against
+ * for its own "Modified" marker.
+ */
+export const DEFAULT_WATERMARK: FlyerTemplate['watermark'] = { opacity: 1, scale: 1, x: 0, y: 0 }
 
 /**
  * Resolves a template to its *effective* photo box — the template's own
@@ -206,17 +248,8 @@ export function makeDefaultTemplate(now: Date = new Date()): FlyerTemplate {
     subtitle: '',
     description: '',
     photo: { src: '' },
-    colors: {
-      heroBg: '#2259a9',
-      heroPattern: '#4372b6',
-      accent: '#efda87',
-      ring: '#0e97c3',
-      subtitle: '#2259a9',
-      iconCircle: '#2259a9',
-      bodyText: '#262626',
-      footerBg: '#2259a9',
-    },
-    watermark: { opacity: 1, scale: 1, x: 0, y: 0 },
+    colors: { ...DEFAULT_COLORS },
+    watermark: { ...DEFAULT_WATERMARK },
     editableFields: [...FLYER_FIELDS],
   }
 }
@@ -269,7 +302,7 @@ export function isFieldEditable(template: FlyerTemplate, field: FlyerField): boo
 
 /** A detail-row field placed at one of the flyer's three fixed slot positions (flyer.css's measured top/left values). */
 export interface DetailRowPlacement {
-  field: Exclude<FlyerField, 'rscEmail'>
+  field: DetailField
   top: number
   left: number
 }
@@ -323,6 +356,78 @@ export function layoutDetailRows(editableFields: readonly FlyerField[]): DetailR
   return rows
 }
 
+/** The footer's four fields, in the fixed order they're offered/rendered in. */
+export const FOOTER_FIELDS: readonly FooterField[] = ['rscEmail', 'phone', 'address', 'website']
+
+/** A footer field placed at one line of the footer's contact block. */
+export interface FooterRowPlacement {
+  field: FooterField
+  top: number
+  /** True once a second (or later) row pushes every row onto the compact,
+      smaller-type layout — see `layoutFooterFields`'s own comment. */
+  compact: boolean
+}
+
+// A single row sits exactly where it always has (flyer.css's own
+// .flyer-footer-label default: top 26px, 15px type) — this constant exists
+// so `layoutFooterFields` can still hand every row an explicit `top` even
+// in the single-row case, without that top value drifting from the CSS
+// default it's meant to match. Left is unchanged for every row (220px,
+// still in flyer.css) since no field is ever wide enough to need a second
+// column the way date/time share one in the detail rows.
+const FOOTER_ROW_TOP_SINGLE = 26
+
+// Two or more rows switch to smaller, tighter-leaded type so up to all four
+// fields stack inside the footer's 115px band without crowding the logo's
+// own vertical center or running past the band's bottom edge. Measured
+// against the footer's own geometry, not the reference (the reference has
+// no multi-field footer to measure against): 4 rows × 17px = 68px, starting
+// at top 20px, ends at 88px — comfortably inside 115px on both ends.
+const FOOTER_ROW_TOP_MULTI = 20
+const FOOTER_ROW_LINE_HEIGHT_MULTI = 17
+
+/**
+ * Assigns the visible footer fields to lines in the footer's contact block,
+ * in `FOOTER_FIELDS` order, closing up any gap a hidden or blank field
+ * would otherwise leave.
+ *
+ * `rscEmail` is visible whenever it's editable, blank or not — matching the
+ * reference's blank state (`RSC EMAIL:` with no value) and every template
+ * committed before this function existed, none of which lists any of the
+ * other three fields. `phone`/`address`/`website` are new: they have no
+ * "blank" print state of their own (no reference to match, and a bare
+ * `PHONE:`/`ADDRESS:`/`WEBSITE:` label with nothing after it would just be
+ * clutter), so each is visible only when it's both editable AND has a
+ * value — same rule `editableFields` + a value already gives every other
+ * hide-when-blank field in this file.
+ *
+ * One visible row keeps the original single-line position/size untouched
+ * (`compact: false`) so a template using only `rscEmail` — every template
+ * committed so far — renders byte-identically to before this function
+ * existed. Two or more switch every row to the compact stacked layout.
+ */
+export function layoutFooterFields(
+  editableFields: readonly FlyerField[],
+  values: Record<FlyerField, string>
+): FooterRowPlacement[] {
+  const editable = new Set(editableFields)
+  const visible = FOOTER_FIELDS.filter(field => {
+    if (!editable.has(field)) return false
+    if (field === 'rscEmail') return true
+    return values[field] !== ''
+  })
+
+  if (visible.length <= 1) {
+    return visible.map(field => ({ field, top: FOOTER_ROW_TOP_SINGLE, compact: false }))
+  }
+
+  return visible.map((field, i) => ({
+    field,
+    top: FOOTER_ROW_TOP_MULTI + i * FOOTER_ROW_LINE_HEIGHT_MULTI,
+    compact: true,
+  }))
+}
+
 /**
  * Picks the template a coordinator should land on: one for the current month
  * if it exists, else the most recent one not in the future, else the first.
@@ -364,7 +469,7 @@ export function slugify(name: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
-/** All five flyer fields, defaulted to empty strings. */
+/** All eight flyer fields, defaulted to empty strings. */
 export function emptyValues(): Record<FlyerField, string> {
   return {
     date: '',
@@ -372,5 +477,8 @@ export function emptyValues(): Record<FlyerField, string> {
     location: '',
     additionalInfo: '',
     rscEmail: '',
+    phone: '',
+    address: '',
+    website: '',
   }
 }

@@ -60,7 +60,13 @@ export interface CropResult {
   panY: number
 }
 
-export type FlyerField = 'date' | 'time' | 'location' | 'additionalInfo' | 'rscEmail'
+/** A field rendered as one of the flyer's three fixed detail-row slots (see domain's `layoutDetailRows`). */
+export type DetailField = 'date' | 'time' | 'location' | 'additionalInfo'
+
+/** A field rendered as a line in the flyer's footer band (see domain's `layoutFooterFields`). */
+export type FooterField = 'rscEmail' | 'phone' | 'address' | 'website'
+
+export type FlyerField = DetailField | FooterField
 
 /**
  * The eight template-controlled colors. The reference flyer also uses a

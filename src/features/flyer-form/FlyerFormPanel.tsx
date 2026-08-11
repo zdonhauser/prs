@@ -19,6 +19,20 @@ const FIELD_PLACEHOLDERS: Record<FlyerField, string> = {
   location: 'e.g. Central Park Community Center',
   additionalInfo: 'Anything else attendees should know',
   rscEmail: 'coordinator@example.com',
+  phone: 'e.g. (555) 123-4567',
+  address: 'e.g. 123 Main St, Springfield',
+  website: 'e.g. www.example.com',
+}
+
+const FIELD_INPUT_TYPES: Record<FlyerField, string> = {
+  date: 'text',
+  time: 'text',
+  location: 'text',
+  additionalInfo: 'text',
+  rscEmail: 'email',
+  phone: 'tel',
+  address: 'text',
+  website: 'url',
 }
 
 export function FlyerFormPanel({ template, templateId, values, onTemplateChange, onValueChange }: FlyerFormPanelProps) {
@@ -40,7 +54,7 @@ export function FlyerFormPanel({ template, templateId, values, onTemplateChange,
             <label key={field} className="form-label">
               {FLYER_FIELD_LABELS[field]}
               <input
-                type={field === 'rscEmail' ? 'email' : 'text'}
+                type={FIELD_INPUT_TYPES[field]}
                 className="form-input"
                 value={values[field]}
                 onChange={e => onValueChange(field, e.target.value)}

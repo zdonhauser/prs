@@ -12,6 +12,7 @@ import {
   clearSavedFlyerForm,
 } from './storage'
 import type { StoryForm, Photo, FlyerForm } from '@/types'
+import { emptyValues } from '@/domain/flyerTemplate'
 
 const KEY = 'prs-success-story-form'
 
@@ -130,7 +131,7 @@ describe('event-flyer form persistence', () => {
   const FLYER_KEY = 'prs-event-flyer-form'
 
   it('round-trips a flyer form object', () => {
-    const form: FlyerForm = { templateId: 'safer-communities', values: { date: 'Aug 12', time: '10am', location: 'Park', additionalInfo: '', rscEmail: '' } }
+    const form: FlyerForm = { templateId: 'safer-communities', values: { ...emptyValues(), date: 'Aug 12', time: '10am', location: 'Park' } }
     saveFlyerForm(form)
     expect(loadSavedFlyerForm()).toEqual(form)
   })
@@ -140,21 +141,21 @@ describe('event-flyer form persistence', () => {
   })
 
   it('stores an envelope with a schema version under its own key', () => {
-    const form: FlyerForm = { templateId: 't1', values: { date: '', time: '', location: '', additionalInfo: '', rscEmail: '' } }
+    const form: FlyerForm = { templateId: 't1', values: emptyValues() }
     saveFlyerForm(form)
     expect(JSON.parse(localStorage.getItem(FLYER_KEY) as string)).toEqual({ v: 1, form })
   })
 
   it('clearSavedFlyerForm removes the entry', () => {
-    saveFlyerForm({ templateId: 't1', values: { date: '', time: '', location: '', additionalInfo: '', rscEmail: '' } })
+    saveFlyerForm({ templateId: 't1', values: emptyValues() })
     clearSavedFlyerForm()
     expect(loadSavedFlyerForm()).toBeNull()
   })
 
   it('does not collide with the success-story form key', () => {
     saveForm({ community: 'Oak Ridge', photos: [] } as Partial<StoryForm> as StoryForm)
-    saveFlyerForm({ templateId: 't1', values: { date: '', time: '', location: '', additionalInfo: '', rscEmail: '' } })
+    saveFlyerForm({ templateId: 't1', values: emptyValues() })
     expect(loadSavedForm()).toEqual({ community: 'Oak Ridge', photos: [] })
-    expect(loadSavedFlyerForm()).toEqual({ templateId: 't1', values: { date: '', time: '', location: '', additionalInfo: '', rscEmail: '' } })
+    expect(loadSavedFlyerForm()).toEqual({ templateId: 't1', values: emptyValues() })
   })
 })

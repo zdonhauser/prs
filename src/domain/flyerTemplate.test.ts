@@ -12,9 +12,13 @@ import {
   pickDefaultTemplateId,
   slugify,
   layoutDetailRows,
+  layoutFooterFields,
+  FOOTER_FIELDS,
   FLYER_FIELDS,
   FLYER_FIELD_LABELS,
   DEFAULT_PHOTO_BOX,
+  DEFAULT_COLORS,
+  DEFAULT_WATERMARK,
   resolvePhotoBox,
   paletteMatches,
 } from './flyerTemplate'
@@ -194,6 +198,31 @@ describe('every bundled template (backward compatibility)', () => {
       expect(resolvePhotoBox(template)).toEqual(DEFAULT_PHOTO_BOX)
     }
   })
+
+  it('none of them lists phone/address/website in editableFields (those fields did not exist yet)', () => {
+    for (const raw of allBundledTemplates) {
+      const template = validateTemplate(raw)
+      expect(template.editableFields).not.toContain('phone')
+      expect(template.editableFields).not.toContain('address')
+      expect(template.editableFields).not.toContain('website')
+    }
+  })
+
+  it('layoutFooterFields renders exactly the legacy single rscEmail row for every one of them, blank or filled', () => {
+    for (const raw of allBundledTemplates) {
+      const template = validateTemplate(raw)
+      const blank = layoutFooterFields(template.editableFields, emptyValues())
+      const filled = layoutFooterFields(template.editableFields, { ...emptyValues(), rscEmail: 'coordinator@example.com' })
+      // Every bundled template's editableFields includes rscEmail today; if
+      // a future one omits it, both calls correctly return [] instead —
+      // still exactly today's behavior, not a new one.
+      const expectedRow = isFieldEditable(template, 'rscEmail')
+        ? [{ field: 'rscEmail' as const, top: 26, compact: false }]
+        : []
+      expect(blank).toEqual(expectedRow)
+      expect(filled).toEqual(expectedRow)
+    }
+  })
 })
 
 describe('resolvePhotoBox', () => {
@@ -293,13 +322,16 @@ describe('isFieldEditable', () => {
 })
 
 describe('emptyValues', () => {
-  it('returns all five fields as empty strings', () => {
+  it('returns all eight fields as empty strings', () => {
     expect(emptyValues()).toEqual({
       date: '',
       time: '',
       location: '',
       additionalInfo: '',
       rscEmail: '',
+      phone: '',
+      address: '',
+      website: '',
     })
   })
 })
@@ -322,15 +354,29 @@ describe('makeDefaultTemplate', () => {
     expect(template.month).toBe('2026-08')
   })
 
-  it('has an empty photo.src and all five editableFields', () => {
+  it('has an empty photo.src and all eight editableFields', () => {
     const template = makeDefaultTemplate()
     expect(template.photo.src).toBe('')
-    expect(template.editableFields).toEqual(['date', 'time', 'location', 'additionalInfo', 'rscEmail'])
+    expect(template.editableFields).toEqual([
+      'date',
+      'time',
+      'location',
+      'additionalInfo',
+      'rscEmail',
+      'phone',
+      'address',
+      'website',
+    ])
   })
 
   it('has the default watermark', () => {
     const template = makeDefaultTemplate()
-    expect(template.watermark).toEqual({ opacity: 1, scale: 1, x: 0, y: 0 })
+    expect(template.watermark).toEqual(DEFAULT_WATERMARK)
+  })
+
+  it('has the default colors', () => {
+    const template = makeDefaultTemplate()
+    expect(template.colors).toEqual(DEFAULT_COLORS)
   })
 })
 
@@ -420,9 +466,78 @@ describe('layoutDetailRows', () => {
   })
 })
 
+describe('layoutFooterFields', () => {
+  it('shows a blank "compact: false" rscEmail row when it is editable but empty (the reference\'s blank state)', () => {
+    expect(layoutFooterFields(['rscEmail'], emptyValues())).toEqual([{ field: 'rscEmail', top: 26, compact: false }])
+  })
+
+  it('shows the same single-row placement when rscEmail has a value', () => {
+    const rows = layoutFooterFields(['rscEmail'], { ...emptyValues(), rscEmail: 'a@b.com' })
+    expect(rows).toEqual([{ field: 'rscEmail', top: 26, compact: false }])
+  })
+
+  it('renders nothing for rscEmail when it is not editable', () => {
+    expect(layoutFooterFields([], emptyValues())).toEqual([])
+  })
+
+  it('renders nothing for phone/address/website when editable but blank — no blank state of their own', () => {
+    expect(layoutFooterFields(['phone', 'address', 'website'], emptyValues())).toEqual([])
+  })
+
+  it('renders nothing for phone/address/website when they have a value but are not editable', () => {
+    const values = { ...emptyValues(), phone: '555-1234', address: '1 Main St', website: 'example.com' }
+    expect(layoutFooterFields([], values)).toEqual([])
+  })
+
+  it('is a single non-compact row when only one field ends up visible, even if others are editable but blank', () => {
+    const rows = layoutFooterFields(['rscEmail', 'phone'], { ...emptyValues(), rscEmail: 'a@b.com' })
+    expect(rows).toEqual([{ field: 'rscEmail', top: 26, compact: false }])
+  })
+
+  it('switches every row to the compact stacked layout once two fields are visible, in FOOTER_FIELDS order', () => {
+    const values = { ...emptyValues(), rscEmail: 'a@b.com', phone: '555-1234' }
+    const rows = layoutFooterFields(['rscEmail', 'phone'], values)
+    expect(rows).toEqual([
+      { field: 'rscEmail', top: 20, compact: true },
+      { field: 'phone', top: 37, compact: true },
+    ])
+  })
+
+  it('closes up a gap left by a skipped field, in fixed field order, with all four visible', () => {
+    const values = { ...emptyValues(), rscEmail: 'a@b.com', address: '1 Main St', website: 'example.com' }
+    // phone is editable but blank — skipped entirely, not a gap.
+    const rows = layoutFooterFields(['rscEmail', 'phone', 'address', 'website'], values)
+    expect(rows).toEqual([
+      { field: 'rscEmail', top: 20, compact: true },
+      { field: 'address', top: 37, compact: true },
+      { field: 'website', top: 54, compact: true },
+    ])
+  })
+
+  it('lays out all four fields when every one is editable and filled', () => {
+    const values = { rscEmail: 'a@b.com', phone: '555-1234', address: '1 Main St', website: 'example.com', date: '', time: '', location: '', additionalInfo: '' }
+    const rows = layoutFooterFields(FOOTER_FIELDS, values)
+    expect(rows).toEqual([
+      { field: 'rscEmail', top: 20, compact: true },
+      { field: 'phone', top: 37, compact: true },
+      { field: 'address', top: 54, compact: true },
+      { field: 'website', top: 71, compact: true },
+    ])
+  })
+})
+
 describe('FLYER_FIELDS / FLYER_FIELD_LABELS', () => {
   it('has a label for every field, in the fixed field order', () => {
-    expect(FLYER_FIELDS).toEqual(['date', 'time', 'location', 'additionalInfo', 'rscEmail'])
+    expect(FLYER_FIELDS).toEqual([
+      'date',
+      'time',
+      'location',
+      'additionalInfo',
+      'rscEmail',
+      'phone',
+      'address',
+      'website',
+    ])
     for (const field of FLYER_FIELDS) {
       expect(typeof FLYER_FIELD_LABELS[field]).toBe('string')
       expect(FLYER_FIELD_LABELS[field].length).toBeGreaterThan(0)

@@ -23,24 +23,39 @@ const PREVIEW_VALUES = emptyValues()
 // The webmaster who adds exported templates to the site.
 const WEBMASTER_EMAIL = 'zac@donrey.dev'
 
-// GitHub's upload UI, deep-linked to the exact folder templates live in. Its
-// commit step offers "Create a new branch for this commit and start a pull
-// request", so an author with repo access goes from exported file to open PR
-// without touching git.
-//
-// Not the fully automatic version, deliberately. GitHub's prefilled-new-file
-// URL (/new/BRANCH?filename=&value=) would need the template's contents in
-// the query string: ours is 64,652 characters, ~67,000 urlencoded, against a
-// practical URL ceiling near 8,000 — the embedded photo alone blows it out.
-// Opening a PR directly from the page instead would need either a GitHub
-// token living in the browser or a backend to hold one, and this app has
-// deliberately had neither.
-const GITHUB_UPLOAD_URL = 'https://github.com/zdonhauser/prs/upload/main/src/config/flyerTemplates'
-
 // Pre-writes the handoff email. A page cannot attach a file to a mailto — the
 // spec has no attachment parameter and every mail client ignores attempts —
 // so the body tells the author to attach it themselves rather than pretending
 // it's already there.
+//
+// This is the ONLY handoff path — there used to also be a direct link to
+// GitHub's upload UI (deep-linked to the templates folder, whose commit step
+// offers "Create a new branch for this commit and start a pull request", so
+// an author with repo access could go from exported file to open PR without
+// touching git). It was tried and pulled: too complicated for this
+// audience, alongside the email option, to present as a real choice.
+// Automating it further than that isn't simple either — GitHub's
+// prefilled-new-file URL (/new/BRANCH?filename=&value=) would need the
+// template's contents in the query string: ours is 64,652 characters,
+// ~67,000 urlencoded, against a practical URL ceiling near 8,000 — the
+// embedded photo alone blows it out. Opening a PR directly from the page
+// instead would need either a GitHub token living in the browser or a
+// backend to hold one, and this app has deliberately had neither. Revisit
+// if a simpler upload option comes up, but don't just re-add the link.
+// Matches the naming convention the two PDF exporters already use
+// (exportPdf.ts's `Success_Story_${slug}_${dateStr}.pdf`, exportFlyerPdf.ts's
+// `Event_Flyer_${slug}_${template.month}.pdf`) rather than the template's own
+// `id` (which is what the file was named before) — a human-facing label, not
+// a lookup key. The loader (config/flyerTemplates.ts) globs every `*.json`
+// under flyerTemplates/ and identifies each one by the `id` field it reads
+// out of the file's own contents, never by filename, so the download name
+// carries no meaning to the app: re-exporting an unchanged template still
+// produces this same filename, and it still replaces cleanly on upload.
+function templateFileName(template: FlyerTemplate): string {
+  const slug = template.name.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_')
+  return `Flyer_Template_${slug}_${template.month}.json`
+}
+
 function mailtoHref(fileName: string, template: FlyerTemplate): string {
   const subject = `New PRS event flyer template: ${template.name}`
   const body = [
@@ -286,13 +301,14 @@ export default function CreatorApp() {
     setExporting(true)
     try {
       const validated = validateTemplate(template)
+      const fileName = templateFileName(validated)
       const blob = new Blob([JSON.stringify(validated, null, 2)], { type: 'application/json' })
-      await deliverFile(blob, `${validated.id}.json`)
+      await deliverFile(blob, fileName)
       // Not a toast: a template is only half-delivered when the file lands in
       // Downloads, and the rest of the job (getting it into the repo) is the
       // part an author has no way to guess. This stays on screen until
       // dismissed, and names the actual file.
-      setExportedFile(`${validated.id}.json`)
+      setExportedFile(fileName)
     } catch (err) {
       showToast(err instanceof Error ? `Can't export: ${err.message}` : "Can't export this template yet.")
     }
@@ -375,28 +391,11 @@ export default function CreatorApp() {
             <h3>Template saved</h3>
             <p className="export-done-file">{exportedFile}</p>
             <p>
-              Coordinators won't see this template until it's added to the site. Two ways to
-              finish:
+              Coordinators won't see this template until it's added to the site — send this file
+              to the webmaster to finish.
             </p>
 
-            <p className="export-done-head">Add it yourself</p>
-            <a
-              className="btn-primary-sm export-done-mail"
-              href={GITHUB_UPLOAD_URL}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open GitHub upload page
-            </a>
-            <p className="export-done-note">
-              Drag <code>{exportedFile}</code> onto that page, then at the bottom choose{' '}
-              <strong>&ldquo;Create a new branch for this commit and start a pull
-              request&rdquo;</strong> and click <strong>Propose changes</strong>. You'll need a
-              GitHub account with access to the repository.
-            </p>
-
-            <p className="export-done-head">Or hand it off</p>
-            <a className="btn-ghost export-done-mail" href={mailtoHref(exportedFile, template)}>
+            <a className="btn-primary-sm export-done-mail" href={mailtoHref(exportedFile, template)}>
               Email the webmaster
             </a>
             <p className="export-done-note">
@@ -407,8 +406,7 @@ export default function CreatorApp() {
             </p>
 
             <p className="export-done-note">
-              Either way it appears in the builder under {formatMonth(template.month)} once
-              it's live.
+              It appears in the builder under {formatMonth(template.month)} once it's live.
             </p>
             <button type="button" className="btn-ghost" onClick={() => setExportedFile(null)}>Close</button>
           </div>

@@ -1,6 +1,6 @@
 {
   "name": "prs-success-story",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Builder for PRS Good Neighbor Program success-story one-pagers",
   "type": "module",
   "private": true,

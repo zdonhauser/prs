@@ -11,10 +11,28 @@ import { useRef } from 'react'
 import type React from 'react'
 import { DateSelect } from '@/features/story-form/DateSelect'
 import { flyerTemplates } from '@/config/flyerTemplates'
-import { groupByMonth, FLYER_FIELDS, FLYER_FIELD_LABELS, resolvePhotoBox } from '@/domain/flyerTemplate'
+import { flyerPalettes } from '@/config/flyerPalettes'
+import {
+  groupByMonth,
+  FLYER_FIELDS,
+  FLYER_FIELD_LABELS,
+  resolvePhotoBox,
+  paletteMatches,
+  DEFAULT_COLORS,
+  DEFAULT_WATERMARK,
+} from '@/domain/flyerTemplate'
 import type { FlyerColors, FlyerField, FlyerTemplate, PhotoBox } from '@/types'
 import { ColorControl } from './ColorControl'
 import { PalettePicker } from './PalettePicker'
+
+/** A small "Modified" pill a disclosure's `<summary>` shows when its
+    contents differ from the template's defaults, so collapsing the eight
+    individual colour controls (or the photo/watermark sliders) behind a
+    closed disclosure can't quietly hide a real customization from an
+    author skimming the panel. */
+function ModifiedBadge() {
+  return <span className="form-disclosure-modified">Modified</span>
+}
 
 interface CreatorPanelProps {
   template: FlyerTemplate
@@ -90,6 +108,23 @@ export function CreatorPanel({
   const photoBox = resolvePhotoBox(template)
   const hasCustomPhotoBox = template.photo.box !== undefined
 
+  // "Modified" for the Advanced colour options disclosure means the eight
+  // colours have drifted from BOTH every coordinated palette AND the
+  // template's own starting colours — checked against both, not just
+  // palettes, because makeDefaultTemplate's colours predate the palette
+  // picker and don't equal any single palette's own values, which would
+  // otherwise mark every fresh template "Modified" before its author has
+  // touched a thing.
+  const colorsModified =
+    !flyerPalettes.some(palette => paletteMatches(template.colors, palette.colors)) &&
+    !paletteMatches(template.colors, DEFAULT_COLORS)
+
+  const watermarkModified =
+    template.watermark.opacity !== DEFAULT_WATERMARK.opacity ||
+    template.watermark.scale !== DEFAULT_WATERMARK.scale ||
+    template.watermark.x !== DEFAULT_WATERMARK.x ||
+    template.watermark.y !== DEFAULT_WATERMARK.y
+
   const handlePhotoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -145,7 +180,9 @@ export function CreatorPanel({
           />
         </label>
         <p className="form-id-hint">
-          Template ID: <code>{templateId}</code> — used for the exported filename ({templateId || 'untitled'}.json).
+          Template ID: <code>{templateId}</code> — how the builder identifies this template
+          once it's added to the site; re-exporting under the same name keeps this the same.
+          The downloaded file is named from the template name and month instead.
         </p>
         <label className="form-label">
           Month
@@ -252,110 +289,132 @@ export function CreatorPanel({
       </section>
 
       <section className="form-section">
-        <h2>Photo Shape &amp; Position</h2>
-        <p className="form-empty-note">Move, resize, or reshape the photo bubble. The teal ring always follows it.</p>
-        <div className="text-size-row">
-          <span>Left</span>
-          <input
-            type="range"
-            min="-200" max="700" step="1"
-            value={photoBox.left}
-            onChange={e => onPhotoBoxChange({ left: parseFloat(e.target.value) })}
-          />
-          <span className="text-size-val">{Math.round(photoBox.left)}px</span>
-        </div>
-        <div className="text-size-row">
-          <span>Top</span>
-          <input
-            type="range"
-            min="-250" max="600" step="1"
-            value={photoBox.top}
-            onChange={e => onPhotoBoxChange({ top: parseFloat(e.target.value) })}
-          />
-          <span className="text-size-val">{Math.round(photoBox.top)}px</span>
-        </div>
-        <div className="text-size-row">
-          <span>Width</span>
-          <input
-            type="range"
-            min="200" max="700" step="1"
-            value={photoBox.width}
-            onChange={e => onPhotoBoxChange({ width: parseFloat(e.target.value) })}
-          />
-          <span className="text-size-val">{Math.round(photoBox.width)}px</span>
-        </div>
-        <div className="text-size-row">
-          <span>Height</span>
-          <input
-            type="range"
-            min="200" max="700" step="1"
-            value={photoBox.height}
-            onChange={e => onPhotoBoxChange({ height: parseFloat(e.target.value) })}
-          />
-          <span className="text-size-val">{Math.round(photoBox.height)}px</span>
-        </div>
-        <button type="button" className="btn-ghost" onClick={onPhotoBoxReset} disabled={!hasCustomPhotoBox}>
-          Reset to default
-        </button>
+        <details className="form-disclosure">
+          <summary>
+            Photo Shape &amp; Position
+            {hasCustomPhotoBox && <ModifiedBadge />}
+          </summary>
+          <div className="form-disclosure-content">
+            <p className="form-empty-note">Move, resize, or reshape the photo bubble. The teal ring always follows it.</p>
+            <div className="text-size-row">
+              <span>Left</span>
+              <input
+                type="range"
+                min="-200" max="700" step="1"
+                value={photoBox.left}
+                onChange={e => onPhotoBoxChange({ left: parseFloat(e.target.value) })}
+              />
+              <span className="text-size-val">{Math.round(photoBox.left)}px</span>
+            </div>
+            <div className="text-size-row">
+              <span>Top</span>
+              <input
+                type="range"
+                min="-250" max="600" step="1"
+                value={photoBox.top}
+                onChange={e => onPhotoBoxChange({ top: parseFloat(e.target.value) })}
+              />
+              <span className="text-size-val">{Math.round(photoBox.top)}px</span>
+            </div>
+            <div className="text-size-row">
+              <span>Width</span>
+              <input
+                type="range"
+                min="200" max="700" step="1"
+                value={photoBox.width}
+                onChange={e => onPhotoBoxChange({ width: parseFloat(e.target.value) })}
+              />
+              <span className="text-size-val">{Math.round(photoBox.width)}px</span>
+            </div>
+            <div className="text-size-row">
+              <span>Height</span>
+              <input
+                type="range"
+                min="200" max="700" step="1"
+                value={photoBox.height}
+                onChange={e => onPhotoBoxChange({ height: parseFloat(e.target.value) })}
+              />
+              <span className="text-size-val">{Math.round(photoBox.height)}px</span>
+            </div>
+            <button type="button" className="btn-ghost" onClick={onPhotoBoxReset} disabled={!hasCustomPhotoBox}>
+              Reset to default
+            </button>
+          </div>
+        </details>
       </section>
 
       <section className="form-section">
         <h2>Colors</h2>
         <PalettePicker colors={template.colors} onSelect={onPaletteSelect} />
-        {COLOR_FIELDS.map(({ key, label }) => (
-          <ColorControl
-            key={key}
-            label={label}
-            value={template.colors[key]}
-            onChange={hex => onColorChange(key, hex)}
-            customColors={customColors}
-            onCustomColorAdd={onCustomColorAdd}
-          />
-        ))}
+        <details className="form-disclosure">
+          <summary>
+            Advanced colour options
+            {colorsModified && <ModifiedBadge />}
+          </summary>
+          <div className="form-disclosure-content">
+            {COLOR_FIELDS.map(({ key, label }) => (
+              <ColorControl
+                key={key}
+                label={label}
+                value={template.colors[key]}
+                onChange={hex => onColorChange(key, hex)}
+                customColors={customColors}
+                onCustomColorAdd={onCustomColorAdd}
+              />
+            ))}
+          </div>
+        </details>
       </section>
 
       <section className="form-section">
-        <h2>Watermark</h2>
-        <div className="text-size-row">
-          <span>Opacity</span>
-          <input
-            type="range"
-            min="0" max="1" step="0.05"
-            value={template.watermark.opacity}
-            onChange={e => onWatermarkChange({ opacity: parseFloat(e.target.value) })}
-          />
-          <span className="text-size-val">{Math.round(template.watermark.opacity * 100)}%</span>
-        </div>
-        <div className="text-size-row">
-          <span>Scale</span>
-          <input
-            type="range"
-            min="0.25" max="2" step="0.05"
-            value={template.watermark.scale}
-            onChange={e => onWatermarkChange({ scale: parseFloat(e.target.value) })}
-          />
-          <span className="text-size-val">{template.watermark.scale.toFixed(2)}×</span>
-        </div>
-        <div className="text-size-row">
-          <span>X</span>
-          <input
-            type="range"
-            min="-300" max="300" step="1"
-            value={template.watermark.x}
-            onChange={e => onWatermarkChange({ x: parseFloat(e.target.value) })}
-          />
-          <span className="text-size-val">{template.watermark.x}px</span>
-        </div>
-        <div className="text-size-row">
-          <span>Y</span>
-          <input
-            type="range"
-            min="-300" max="300" step="1"
-            value={template.watermark.y}
-            onChange={e => onWatermarkChange({ y: parseFloat(e.target.value) })}
-          />
-          <span className="text-size-val">{template.watermark.y}px</span>
-        </div>
+        <details className="form-disclosure">
+          <summary>
+            Watermark
+            {watermarkModified && <ModifiedBadge />}
+          </summary>
+          <div className="form-disclosure-content">
+            <div className="text-size-row">
+              <span>Opacity</span>
+              <input
+                type="range"
+                min="0" max="1" step="0.05"
+                value={template.watermark.opacity}
+                onChange={e => onWatermarkChange({ opacity: parseFloat(e.target.value) })}
+              />
+              <span className="text-size-val">{Math.round(template.watermark.opacity * 100)}%</span>
+            </div>
+            <div className="text-size-row">
+              <span>Scale</span>
+              <input
+                type="range"
+                min="0.25" max="2" step="0.05"
+                value={template.watermark.scale}
+                onChange={e => onWatermarkChange({ scale: parseFloat(e.target.value) })}
+              />
+              <span className="text-size-val">{template.watermark.scale.toFixed(2)}×</span>
+            </div>
+            <div className="text-size-row">
+              <span>X</span>
+              <input
+                type="range"
+                min="-300" max="300" step="1"
+                value={template.watermark.x}
+                onChange={e => onWatermarkChange({ x: parseFloat(e.target.value) })}
+              />
+              <span className="text-size-val">{template.watermark.x}px</span>
+            </div>
+            <div className="text-size-row">
+              <span>Y</span>
+              <input
+                type="range"
+                min="-300" max="300" step="1"
+                value={template.watermark.y}
+                onChange={e => onWatermarkChange({ y: parseFloat(e.target.value) })}
+              />
+              <span className="text-size-val">{template.watermark.y}px</span>
+            </div>
+          </div>
+        </details>
       </section>
 
       <section className="form-section">

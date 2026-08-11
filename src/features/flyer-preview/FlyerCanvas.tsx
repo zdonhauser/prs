@@ -7,11 +7,11 @@
 import { useId, useState } from 'react'
 import type React from 'react'
 import { coverRect, clampPan } from '@/domain/photoGeometry'
-import { isFieldEditable, layoutDetailRows, resolvePhotoBox } from '@/domain/flyerTemplate'
+import { layoutDetailRows, layoutFooterFields, resolvePhotoBox } from '@/domain/flyerTemplate'
 import { logoSrc } from '@/config/themes'
 import prsMarkRaw from '@/assets/prs-mark.svg?raw'
 import { CalendarIcon, ClockIcon, MapPinIcon, InfoIcon } from './icons'
-import type { FlyerField, FlyerTemplate } from '@/types'
+import type { DetailField, FlyerField, FlyerTemplate, FooterField } from '@/types'
 
 interface FlyerCanvasProps {
   template: FlyerTemplate
@@ -54,11 +54,22 @@ interface DetailRowMeta {
 // has decided which fields are visible and where each one sits — this is
 // display metadata only, not layout, which is why it isn't in the domain
 // module alongside `layoutDetailRows`.
-const DETAIL_META: Record<Exclude<FlyerField, 'rscEmail'>, DetailRowMeta> = {
+const DETAIL_META: Record<DetailField, DetailRowMeta> = {
   date: { label: 'DATE:', Icon: CalendarIcon },
   time: { label: 'TIME:', Icon: ClockIcon },
   location: { label: 'LOCATION:', Icon: MapPinIcon },
   additionalInfo: { label: 'ADDITIONAL INFORMATION:', Icon: InfoIcon },
+}
+
+// Footer label per field — only `rscEmail` prints this text when blank
+// (matching the reference's blank state); the other three never render a
+// label of their own (see `layoutFooterFields`'s doc comment), so this map
+// is only ever consulted for `rscEmail`.
+const FOOTER_LABELS: Record<FooterField, string> = {
+  rscEmail: 'RSC EMAIL:',
+  phone: 'PHONE:',
+  address: 'ADDRESS:',
+  website: 'WEBSITE:',
 }
 
 export function FlyerCanvas({ template, values, onPhotoClick }: FlyerCanvasProps) {
@@ -100,6 +111,7 @@ export function FlyerCanvas({ template, values, onPhotoClick }: FlyerCanvasProps
   const watermarkClipId = `flyer-watermark-clip-${useId()}`
 
   const detailRows = layoutDetailRows(template.editableFields)
+  const footerRows = layoutFooterFields(template.editableFields, values)
 
   const photoBox = resolvePhotoBox(template)
   const ringBox = {
@@ -230,16 +242,30 @@ export function FlyerCanvas({ template, values, onPhotoClick }: FlyerCanvasProps
         )
       })}
 
-      {/* Footer — `rscEmail` is independent of the three detail slots above:
-          when it isn't editable, the footer prints the logo alone with no
-          label at all, rather than a permanently-blank "RSC EMAIL:". */}
+      {/* Footer — independent of the three detail slots above, and laid out
+          by `layoutFooterFields` (domain) rather than `layoutDetailRows`:
+          `rscEmail` still shows a blank "RSC EMAIL:" label when editable but
+          empty (matching the reference's blank state); a field WITH a value
+          prints just the value, no "LABEL:" prefix; `phone`/`address`/
+          `website` have no blank print state at all — not editable, or
+          editable but empty, and the row doesn't render, no gap left
+          behind. One visible row keeps the original single-line
+          position/size; two or more switch to the compact stacked layout. */}
       <div className="flyer-footer">
         <img src={logoSrc.white} alt="Portfolio Resident Services" className="flyer-footer-logo" />
-        {isFieldEditable(template, 'rscEmail') && (
-          <div className="flyer-footer-label">
-            RSC EMAIL:{values.rscEmail && <span className="flyer-detail-value"> {values.rscEmail}</span>}
-          </div>
-        )}
+        {footerRows.map(({ field, top, compact }) => {
+          const value = values[field]
+          const showLabel = field === 'rscEmail' && !value
+          return (
+            <div
+              key={field}
+              className={compact ? 'flyer-footer-label flyer-footer-label--compact' : 'flyer-footer-label'}
+              style={compact ? { top } : undefined}
+            >
+              {showLabel ? FOOTER_LABELS[field] : <span className="flyer-detail-value">{value}</span>}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

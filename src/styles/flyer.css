@@ -338,7 +338,13 @@
      against the whole icon — matches the reference (measured directly,
      page y≈967; .flyer-footer starts at page y=941 (bottom:0 of a
      1056-tall root minus its own 115px height), so relative to *this*
-     element's own positioning context the offset is 967-941=26). */
+     element's own positioning context the offset is 967-941=26). This is
+     the default `top` — the *only* one a template with a single visible
+     footer field (every template committed so far) ever uses, since
+     `layoutFooterFields` (domain) doesn't set an inline `top` for that
+     case at all, leaving this rule in sole control exactly as before. Two
+     or more visible fields get an inline `top` per row instead (see
+     `--compact`, below), overriding this. */
   top: 26px;
   font-size: 15px;
   font-weight: 800;
@@ -346,4 +352,14 @@
   /* Fixed, not template-controlled (see FlyerColors' doc comment) — the
      footer band is always dark, so its label is always white. */
   color: #ffffff;
+}
+
+/* Two or more visible footer fields (see `layoutFooterFields`, domain):
+   smaller type so up to all four rows stack inside the footer's 115px band
+   without crowding the logo's vertical center or running past the band's
+   bottom edge. `left`/`font-weight`/`text-transform`/`color` are unchanged,
+   inherited from `.flyer-footer-label` above; only `top` (inline, per row)
+   and this smaller `font-size` differ from the single-row default. */
+.flyer-footer-label--compact {
+  font-size: 13px;
 }
