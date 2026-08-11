@@ -272,3 +272,52 @@
   border-radius: 0;
 }
 
+/* ── Template picker (event flyer) ──────────────────── */
+
+.template-picker-group {
+  margin-bottom: 14px;
+}
+
+.template-picker-group:last-child {
+  margin-bottom: 0;
+}
+
+.template-picker-month {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.template-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.template-btn {
+  padding: 10px 12px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.template-btn.active {
+  border-color: var(--blue);
+  background: #eef3fb;
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.form-empty-note {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+

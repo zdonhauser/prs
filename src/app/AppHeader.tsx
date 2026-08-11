@@ -4,13 +4,15 @@ interface AppHeaderProps {
   onClear: () => void
   onExport: () => void
   exporting: boolean
+  /** Defaults to the success-story app's own title, unchanged for App.tsx. */
+  title?: string
 }
 
-export function AppHeader({ sidebarCollapsed, onToggleSidebar, onClear, onExport, exporting }: AppHeaderProps) {
+export function AppHeader({ sidebarCollapsed, onToggleSidebar, onClear, onExport, exporting, title = 'PRS Success Story Builder' }: AppHeaderProps) {
   return (
     <header className="app-header">
       <h1>
-        PRS Success Story Builder
+        {title}
         <span className="app-version">v{__APP_VERSION__}</span>
       </h1>
       <div className="app-header-actions">
