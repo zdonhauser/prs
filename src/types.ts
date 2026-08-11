@@ -80,6 +80,14 @@ export interface FlyerColors {
   footerBg: string
 }
 
+/** A photo bubble's bounding box, in page px on the 816×1056 basis. */
+export interface PhotoBox {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
 export interface FlyerTemplate {
   /** schema version */
   v: 1
@@ -91,8 +99,12 @@ export interface FlyerTemplate {
   headline: string[]
   subtitle: string
   description: string
-  /** dataURL, downscaled ≤1600px JPEG */
-  photo: { src: string }
+  photo: {
+    /** dataURL, downscaled ≤1600px JPEG */
+    src: string
+    /** Page px on the 816×1056 basis. Omitted = the measured default (`DEFAULT_PHOTO_BOX`). */
+    box?: PhotoBox
+  }
   colors: FlyerColors
   watermark: { opacity: number; scale: number; x: number; y: number }
   editableFields: FlyerField[]

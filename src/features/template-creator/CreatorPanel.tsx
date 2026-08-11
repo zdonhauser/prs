@@ -11,9 +11,10 @@ import { useRef } from 'react'
 import type React from 'react'
 import { DateSelect } from '@/features/story-form/DateSelect'
 import { flyerTemplates } from '@/config/flyerTemplates'
-import { groupByMonth, FLYER_FIELDS, FLYER_FIELD_LABELS } from '@/domain/flyerTemplate'
-import type { FlyerColors, FlyerField, FlyerTemplate } from '@/types'
+import { groupByMonth, FLYER_FIELDS, FLYER_FIELD_LABELS, resolvePhotoBox } from '@/domain/flyerTemplate'
+import type { FlyerColors, FlyerField, FlyerTemplate, PhotoBox } from '@/types'
 import { ColorControl } from './ColorControl'
+import { PalettePicker } from './PalettePicker'
 
 interface CreatorPanelProps {
   template: FlyerTemplate
@@ -30,11 +31,19 @@ interface CreatorPanelProps {
   onWatermarkChange: (patch: Partial<FlyerTemplate['watermark']>) => void
   onFieldToggle: (field: FlyerField) => void
   onPhotoFile: (file: File) => void
+  onPhotoAdjust: () => void
   onPhotoRemove: () => void
   photoError: string | null
   onImportFile: (file: File) => void
   importError: string | null
   onLoadBundled: (id: string) => void
+  onPhotoBoxChange: (patch: Partial<PhotoBox>) => void
+  onPhotoBoxReset: () => void
+  onPaletteSelect: (colors: FlyerColors) => void
+  /** Session-only colors picked via any ColorControl's double-click-a-swatch
+      flow, shared by all eight controls (see ColorControl and CreatorApp). */
+  customColors: string[]
+  onCustomColorAdd: (hex: string) => void
 }
 
 const COLOR_FIELDS: Array<{ key: keyof FlyerColors; label: string }> = [
@@ -63,15 +72,23 @@ export function CreatorPanel({
   onWatermarkChange,
   onFieldToggle,
   onPhotoFile,
+  onPhotoAdjust,
   onPhotoRemove,
   photoError,
   onImportFile,
   importError,
   onLoadBundled,
+  onPhotoBoxChange,
+  onPhotoBoxReset,
+  onPaletteSelect,
+  customColors,
+  onCustomColorAdd,
 }: CreatorPanelProps) {
   const photoInputRef = useRef<HTMLInputElement>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
   const monthGroups = groupByMonth(flyerTemplates)
+  const photoBox = resolvePhotoBox(template)
+  const hasCustomPhotoBox = template.photo.box !== undefined
 
   const handlePhotoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -205,6 +222,9 @@ export function CreatorPanel({
           <div className="creator-photo-preview">
             <img src={template.photo.src} alt="" className="creator-photo-thumb" />
             <div className="creator-photo-actions">
+              <button type="button" className="btn-ghost" onClick={onPhotoAdjust}>
+                Adjust
+              </button>
               <button type="button" className="btn-ghost" onClick={() => photoInputRef.current?.click()}>
                 Replace…
               </button>
@@ -232,9 +252,65 @@ export function CreatorPanel({
       </section>
 
       <section className="form-section">
+        <h2>Photo Shape &amp; Position</h2>
+        <p className="form-empty-note">Move, resize, or reshape the photo bubble. The teal ring always follows it.</p>
+        <div className="text-size-row">
+          <span>Left</span>
+          <input
+            type="range"
+            min="-200" max="700" step="1"
+            value={photoBox.left}
+            onChange={e => onPhotoBoxChange({ left: parseFloat(e.target.value) })}
+          />
+          <span className="text-size-val">{Math.round(photoBox.left)}px</span>
+        </div>
+        <div className="text-size-row">
+          <span>Top</span>
+          <input
+            type="range"
+            min="-250" max="600" step="1"
+            value={photoBox.top}
+            onChange={e => onPhotoBoxChange({ top: parseFloat(e.target.value) })}
+          />
+          <span className="text-size-val">{Math.round(photoBox.top)}px</span>
+        </div>
+        <div className="text-size-row">
+          <span>Width</span>
+          <input
+            type="range"
+            min="200" max="700" step="1"
+            value={photoBox.width}
+            onChange={e => onPhotoBoxChange({ width: parseFloat(e.target.value) })}
+          />
+          <span className="text-size-val">{Math.round(photoBox.width)}px</span>
+        </div>
+        <div className="text-size-row">
+          <span>Height</span>
+          <input
+            type="range"
+            min="200" max="700" step="1"
+            value={photoBox.height}
+            onChange={e => onPhotoBoxChange({ height: parseFloat(e.target.value) })}
+          />
+          <span className="text-size-val">{Math.round(photoBox.height)}px</span>
+        </div>
+        <button type="button" className="btn-ghost" onClick={onPhotoBoxReset} disabled={!hasCustomPhotoBox}>
+          Reset to default
+        </button>
+      </section>
+
+      <section className="form-section">
         <h2>Colors</h2>
+        <PalettePicker colors={template.colors} onSelect={onPaletteSelect} />
         {COLOR_FIELDS.map(({ key, label }) => (
-          <ColorControl key={key} label={label} value={template.colors[key]} onChange={hex => onColorChange(key, hex)} />
+          <ColorControl
+            key={key}
+            label={label}
+            value={template.colors[key]}
+            onChange={hex => onColorChange(key, hex)}
+            customColors={customColors}
+            onCustomColorAdd={onCustomColorAdd}
+          />
         ))}
       </section>
 

@@ -17,6 +17,21 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         const root = location.pathname.replace(/(success-story|event-flyer|template-creator)\/$/, '')
+        // A new service worker activates immediately (workbox skipWaiting +
+        // clientsClaim) and then takes over this already-loaded page, whose
+        // HTML and JS came from the previous build. Reload once so the page
+        // matches the assets the new worker will serve — without this, a
+        // lazily-imported chunk can 404 after the old precache is cleaned up.
+        // Guarded on there having been a controller already, so a first-ever
+        // visit (where claiming is expected) doesn't reload for nothing.
+        let reloading = false
+        const hadController = !!navigator.serviceWorker.controller
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (hadController && !reloading) {
+            reloading = true
+            location.reload()
+          }
+        })
         navigator.serviceWorker.register(root + 'sw.js', { scope: root })
       })
     }

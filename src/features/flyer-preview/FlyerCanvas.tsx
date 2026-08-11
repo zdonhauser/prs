@@ -7,7 +7,7 @@
 import { useId, useState } from 'react'
 import type React from 'react'
 import { coverRect, clampPan } from '@/domain/photoGeometry'
-import { isFieldEditable, layoutDetailRows } from '@/domain/flyerTemplate'
+import { isFieldEditable, layoutDetailRows, resolvePhotoBox } from '@/domain/flyerTemplate'
 import { logoSrc } from '@/config/themes'
 import prsMarkRaw from '@/assets/prs-mark.svg?raw'
 import { CalendarIcon, ClockIcon, MapPinIcon, InfoIcon } from './icons'
@@ -16,17 +16,18 @@ import type { FlyerField, FlyerTemplate } from '@/types'
 interface FlyerCanvasProps {
   template: FlyerTemplate
   values: Record<FlyerField, string>
+  /** Present only in the template creator (see CreatorApp) — mirrors
+      PreviewCanvas's own `onPhotoClick` (conventions brief §5): when set,
+      the photo bubble gets `cursor: pointer` and an onClick that opens the
+      crop modal. Absent for the coordinator app and the PDF export, so
+      neither gets a pointer cursor or a handler. */
+  onPhotoClick?: () => void
 }
 
-// The photo clip-circle's bounding box (page px) — center (608, 195),
-// radius 227, fitted visually against the hi-res reference (the visual
-// spec flagged this pair as "best found visually, not analytically").
-// Kept in sync by hand with the matching literals in flyer.css's
-// `.flyer-photo` rule, the same "measured box as both CSS and a constant"
-// pattern page.css's PHOTO_ZONE already uses (conventions brief §3) —
-// needed here because coverRect/clampPan take the box dimensions as plain
-// numbers, not a CSS reference.
-const PHOTO_BOX = { left: 381, top: -32, size: 454 }
+// The teal ring is the photo box grown by 4px on every side, with a 7px
+// border straddling that grown edge — unchanged since flyer.css first
+// measured it; only the photo box itself is now template data.
+const RING_GROW = 4
 
 // Watermark base placement/size at watermark.scale === 1, x === y === 0 —
 // the reference's measured "~470px across, centered near (120, 250)".
@@ -60,7 +61,7 @@ const DETAIL_META: Record<Exclude<FlyerField, 'rscEmail'>, DetailRowMeta> = {
   additionalInfo: { label: 'ADDITIONAL INFORMATION:', Icon: InfoIcon },
 }
 
-export function FlyerCanvas({ template, values }: FlyerCanvasProps) {
+export function FlyerCanvas({ template, values, onPhotoClick }: FlyerCanvasProps) {
   const { colors, watermark, photo, headline } = template
   const hasPhoto = photo.src !== ''
 
@@ -100,8 +101,15 @@ export function FlyerCanvas({ template, values }: FlyerCanvasProps) {
 
   const detailRows = layoutDetailRows(template.editableFields)
 
-  const photoRect = coverRect(naturalW, naturalH, PHOTO_BOX.size, PHOTO_BOX.size)
-  const { x: panX, y: panY } = clampPan(naturalW, naturalH, PHOTO_BOX.size, PHOTO_BOX.size, 0, 0, 1)
+  const photoBox = resolvePhotoBox(template)
+  const ringBox = {
+    left: photoBox.left - RING_GROW,
+    top: photoBox.top - RING_GROW,
+    width: photoBox.width + RING_GROW * 2,
+    height: photoBox.height + RING_GROW * 2,
+  }
+  const photoRect = coverRect(naturalW, naturalH, photoBox.width, photoBox.height)
+  const { x: panX, y: panY } = clampPan(naturalW, naturalH, photoBox.width, photoBox.height, 0, 0, 1)
 
   return (
     <div className="flyer" style={cssVars}>
@@ -158,9 +166,22 @@ export function FlyerCanvas({ template, values }: FlyerCanvasProps) {
       </div>
 
       {/* Teal ring (drawn first so the opaque photo box paints over the
-          part of the ring it covers) + photo circle */}
-      <div className="flyer-ring" />
-      <div className="flyer-photo" style={{ left: PHOTO_BOX.left, top: PHOTO_BOX.top, width: PHOTO_BOX.size, height: PHOTO_BOX.size }}>
+          part of the ring it covers) + photo circle. Both boxes are inline
+          style now (template data via resolvePhotoBox), not flyer.css
+          literals — border-radius: 50% on a non-square box already yields
+          the right ellipse, no CSS change needed for that. */}
+      <div className="flyer-ring" style={{ left: ringBox.left, top: ringBox.top, width: ringBox.width, height: ringBox.height }} />
+      <div
+        className="flyer-photo"
+        style={{
+          left: photoBox.left,
+          top: photoBox.top,
+          width: photoBox.width,
+          height: photoBox.height,
+          cursor: onPhotoClick ? 'pointer' : undefined,
+        }}
+        onClick={onPhotoClick}
+      >
         {hasPhoto && (
           <img
             src={photo.src}

@@ -1,7 +1,7 @@
 // Pure flyer-template helpers: validation, defaults, and month grouping.
 // No React, no DOM, no browser APIs — see conventions brief §1.
 
-import type { FlyerColors, FlyerField, FlyerTemplate } from '@/types'
+import type { FlyerColors, FlyerField, FlyerTemplate, PhotoBox } from '@/types'
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
 
@@ -28,6 +28,44 @@ export const FLYER_FIELD_LABELS: Record<FlyerField, string> = {
   location: 'Location',
   additionalInfo: 'Additional Information',
   rscEmail: 'RSC Email',
+}
+
+/**
+ * The photo bubble's default bounding box, in page px on the 816×1056
+ * basis — used whenever a template omits `photo.box` (every template
+ * committed before this field existed, plus any new one an author hasn't
+ * touched the shape controls on).
+ *
+ * A wide ellipse, not a circle: tuned against the hi-res reference
+ * (`<scratchpad>/ref/flyer-hi.png`) by rendering, then measuring where the
+ * teal ring falls on its two visible arcs (left, bottom — the ring runs off
+ * the top and right page edges, so those aren't comparable) against the
+ * reference's own ring, and iterating. Converged to a left-arc delta of
+ * +1.6px mean / 7px max and a bottom-arc delta of −0.6px mean / 3px max
+ * (26 and 8 sample scanlines respectively, skipping any row the reference's
+ * or the render's own headline text occludes on either side). See
+ * task-7-report.md for the full measurement.
+ */
+export const DEFAULT_PHOTO_BOX: PhotoBox = { left: 401, top: -32, width: 535, height: 438 }
+
+/**
+ * Resolves a template to its *effective* photo box — the template's own
+ * `photo.box` if it set one, else `DEFAULT_PHOTO_BOX`. The one place
+ * `FlyerCanvas` and `exportFlyerPdf` both go through, so the default only
+ * ever needs to change in one place.
+ */
+export function resolvePhotoBox(template: FlyerTemplate): PhotoBox {
+  return template.photo.box ?? DEFAULT_PHOTO_BOX
+}
+
+/**
+ * Whether `colors` matches every one of a palette's eight values —
+ * case-insensitively, since a hex typed or set programmatically can differ
+ * only in letter case from the same color. Used by the creator's palette
+ * picker to show which (if any) coordinated scheme is currently active.
+ */
+export function paletteMatches(colors: FlyerColors, palette: FlyerColors): boolean {
+  return COLOR_KEYS.every(key => colors[key].toLowerCase() === palette[key].toLowerCase())
 }
 
 function isFlyerField(value: string): value is FlyerField {
@@ -90,6 +128,26 @@ export function validateTemplate(value: unknown): FlyerTemplate {
   // mistake, not a structural one.
   if (!isPlainObject(value.photo) || typeof value.photo.src !== 'string') {
     throw new TypeError('FlyerTemplate.photo.src must be a string')
+  }
+
+  // `box` is optional — every template committed before this field existed
+  // (and the bundled sample) has no `box` key at all, and must keep
+  // validating and rendering exactly as it did (via DEFAULT_PHOTO_BOX,
+  // below). `undefined` is accepted the same way whether the key is
+  // entirely absent or present-but-undefined, so a value reset by deleting
+  // the key and one reset by assigning `undefined` both pass identically.
+  // A *present* box, though, must be four finite numbers — Number.isFinite
+  // rather than typeof, so NaN/Infinity (both `typeof === 'number'`) are
+  // still rejected.
+  if (value.photo.box !== undefined) {
+    if (!isPlainObject(value.photo.box)) {
+      throw new TypeError('FlyerTemplate.photo.box must be an object')
+    }
+    for (const key of ['left', 'top', 'width', 'height'] as const) {
+      if (typeof value.photo.box[key] !== 'number' || !Number.isFinite(value.photo.box[key])) {
+        throw new TypeError(`FlyerTemplate.photo.box.${key} must be a finite number`)
+      }
+    }
   }
 
   if (!isPlainObject(value.colors)) {

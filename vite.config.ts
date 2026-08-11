@@ -97,6 +97,20 @@ export default defineConfig({
       // old build on the staging URL. Deny staging paths so the staging
       // site always loads its own build.
       workbox: {
+        // registerType 'autoUpdate' alone does NOT update anyone here. The
+        // generated worker's default skipWaiting is message-driven — it waits
+        // for a {type:'SKIP_WAITING'} postMessage that vite-plugin-pwa's
+        // auto-injected registerSW.js normally sends. injectRegister is false
+        // (that snippet resolves './' against the page, which 404s from the
+        // nested tool pages), so nothing ever sent it: a new worker installed,
+        // sat in `waiting` forever, and every visitor kept getting the old
+        // build from the old precache. Observed live in production.
+        //
+        // These make the new worker activate and take over open pages on its
+        // own. The registration snippet in each HTML page reloads once when
+        // that happens, so the page and the assets stay in step.
+        skipWaiting: true,
+        clientsClaim: true,
         // The default pattern set is js/css/html only. The theme logos are
         // now hashed build assets rather than public/ files listed in
         // includeAssets, so images have to be globbed explicitly or the

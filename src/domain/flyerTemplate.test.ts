@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { FlyerTemplate } from '@/types'
+import type { FlyerColors, FlyerTemplate } from '@/types'
 import {
   validateTemplate,
   makeDefaultTemplate,
@@ -14,6 +14,9 @@ import {
   layoutDetailRows,
   FLYER_FIELDS,
   FLYER_FIELD_LABELS,
+  DEFAULT_PHOTO_BOX,
+  resolvePhotoBox,
+  paletteMatches,
 } from './flyerTemplate'
 
 // Loaded via import.meta.glob (not a static import of the config module) so
@@ -25,6 +28,17 @@ const flyerTemplateModules = import.meta.glob('../config/flyerTemplates/safer-co
   import: 'default',
 })
 const sampleTemplate: unknown = Object.values(flyerTemplateModules)[0]
+
+// Every bundled template file, not just the one sample above — the
+// strongest possible proof that `photo.box` being optional is truly
+// backward-compatible: every template actually committed to the repo (not
+// a synthetic fixture) still validates, and still resolves to
+// DEFAULT_PHOTO_BOX now that none of them sets a `box`.
+const allBundledTemplateModules = import.meta.glob('../config/flyerTemplates/*.json', {
+  eager: true,
+  import: 'default',
+})
+const allBundledTemplates: unknown[] = Object.values(allBundledTemplateModules)
 
 function validTemplate(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -110,6 +124,112 @@ describe('validateTemplate', () => {
 
   it('rejects an empty id', () => {
     expect(() => validateTemplate(validTemplate({ id: '' }))).toThrow(/id/)
+  })
+
+  describe('photo.box (optional — backward compatibility)', () => {
+    it('accepts a template with no box key at all', () => {
+      expect(() => validateTemplate(validTemplate())).not.toThrow()
+      expect(validateTemplate(validTemplate()).photo.box).toBeUndefined()
+    })
+
+    it('accepts a template whose photo.box is explicitly undefined', () => {
+      const template = validTemplate({ photo: { src: 'x', box: undefined } })
+      expect(() => validateTemplate(template)).not.toThrow()
+    })
+
+    it('accepts a present box with four finite numbers, including negative ones', () => {
+      const box = { left: -50, top: -100, width: 500, height: 400 }
+      const template = validTemplate({ photo: { src: 'x', box } })
+      expect(() => validateTemplate(template)).not.toThrow()
+      expect(validateTemplate(template).photo.box).toEqual(box)
+    })
+
+    it('rejects a non-object box, naming "box"', () => {
+      const template = validTemplate({ photo: { src: 'x', box: 'nope' } })
+      expect(() => validateTemplate(template)).toThrow(/photo\.box/)
+    })
+
+    it('rejects a box missing a key, naming that key', () => {
+      const template = validTemplate({ photo: { src: 'x', box: { left: 0, top: 0, width: 500 } } })
+      expect(() => validateTemplate(template)).toThrow(/height/)
+    })
+
+    it('rejects a box with a string value, naming that key', () => {
+      const template = validTemplate({ photo: { src: 'x', box: { left: '0', top: 0, width: 500, height: 400 } } })
+      expect(() => validateTemplate(template)).toThrow(/left/)
+    })
+
+    it.each(['NaN', 'Infinity', '-Infinity'])('rejects a box with %s (typeof number, but not finite)', (literal) => {
+      const value = literal === 'NaN' ? NaN : literal === 'Infinity' ? Infinity : -Infinity
+      const template = validTemplate({ photo: { src: 'x', box: { left: 0, top: 0, width: value, height: 400 } } })
+      expect(typeof value).toBe('number') // sanity: this is exactly the case typeof alone would miss
+      expect(() => validateTemplate(template)).toThrow(/width/)
+    })
+  })
+})
+
+describe('every bundled template (backward compatibility)', () => {
+  it('found at least one bundled template to check', () => {
+    // Guards the glob pattern itself — a typo there would make every
+    // assertion below vacuously pass over zero templates.
+    expect(allBundledTemplates.length).toBeGreaterThan(0)
+  })
+
+  it('every bundled template file validates as-is', () => {
+    for (const raw of allBundledTemplates) {
+      expect(() => validateTemplate(raw)).not.toThrow()
+    }
+  })
+
+  it('none of them has a photo.box (none existed before this field did)', () => {
+    for (const raw of allBundledTemplates) {
+      const template = validateTemplate(raw)
+      expect(template.photo.box).toBeUndefined()
+    }
+  })
+
+  it('resolvePhotoBox falls back to DEFAULT_PHOTO_BOX for every one of them', () => {
+    for (const raw of allBundledTemplates) {
+      const template = validateTemplate(raw)
+      expect(resolvePhotoBox(template)).toEqual(DEFAULT_PHOTO_BOX)
+    }
+  })
+})
+
+describe('resolvePhotoBox', () => {
+  it("returns DEFAULT_PHOTO_BOX when the template hasn't set its own box", () => {
+    const template = validateTemplate(validTemplate())
+    expect(resolvePhotoBox(template)).toEqual(DEFAULT_PHOTO_BOX)
+  })
+
+  it('returns the template’s own box when it set one, not the default', () => {
+    const box = { left: 10, top: 20, width: 300, height: 250 }
+    const template = validateTemplate(validTemplate({ photo: { src: 'x', box } }))
+    expect(resolvePhotoBox(template)).toEqual(box)
+    expect(resolvePhotoBox(template)).not.toEqual(DEFAULT_PHOTO_BOX)
+  })
+})
+
+describe('paletteMatches', () => {
+  const palette: FlyerColors = {
+    heroBg: '#2259A9',
+    heroPattern: '#4574B7',
+    accent: '#EFDA87',
+    ring: '#0E97C3',
+    subtitle: '#2259A9',
+    iconCircle: '#2259A9',
+    bodyText: '#262626',
+    footerBg: '#2259A9',
+  }
+
+  it('is true when every one of the eight keys matches, case-insensitively', () => {
+    const colors: FlyerColors = { ...palette, heroBg: palette.heroBg.toLowerCase() }
+    expect(paletteMatches(colors, palette)).toBe(true)
+  })
+
+  it('is false when exactly one of the eight keys differs', () => {
+    const colors: FlyerColors = { ...palette, accent: '#ffffff' }
+    expect(paletteMatches(colors, palette)).toBe(false)
   })
 })
 

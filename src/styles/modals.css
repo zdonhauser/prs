@@ -67,6 +67,15 @@
   cursor: grabbing;
 }
 
+/* The flyer prints its photo in a circle, so the creator crops in one too —
+   otherwise an author frames a face inside a square and the flyer quietly
+   cuts the corners off it. The clamp still guarantees the square cell is
+   covered, and a circle inscribed in that square is covered with it, so
+   this is a mask over the same crop rather than different geometry. */
+.crop-frame--circle {
+  border-radius: 50%;
+}
+
 .crop-controls {
   display: flex;
   flex-direction: column;

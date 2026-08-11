@@ -7,7 +7,7 @@
 // `readAsPhoto` helper inline rather than promoting it.
 import { normalizeImageFile } from '@/services/imageConversion'
 import { coverRect, clampPan } from '@/domain/photoGeometry'
-import type { CropResult, Photo } from '@/types'
+import type { CropResult, Photo, PhotoBox } from '@/types'
 
 /** A freshly-picked photo, before any crop adjustment. `Photo`'s full shape
     (id/src/naturalW/naturalH/zoom/panX/panY) is exactly what's needed to
@@ -16,12 +16,22 @@ import type { CropResult, Photo } from '@/types'
     from a `Photo` living in the story app's own photo array. */
 export type PendingPhoto = Photo
 
-/** The square crop-cell size to use for both the crop modal and the bake
-    below: capped at 1600 (the export ceiling) but never upscaled past the
-    source image's own longer edge. */
-export function cropCellSize(photo: Pick<PendingPhoto, 'naturalW' | 'naturalH'>): number {
+/** The crop-cell size to use for both the crop modal and the bake below,
+    preserving `box`'s aspect ratio so a non-square photo box (an ellipse,
+    not a circle) gets a matching crop frame instead of a square one — a
+    square crop on a wide box would let the flyer show only a slice of
+    what the author framed. The longer edge is capped at 1600 (the export
+    ceiling) but never upscaled past the source image's own longer edge,
+    same as before; the shorter edge follows `box`'s ratio off that. */
+export function cropCellSize(
+  photo: Pick<PendingPhoto, 'naturalW' | 'naturalH'>,
+  box: Pick<PhotoBox, 'width' | 'height'>
+): { w: number; h: number } {
   const longEdge = Math.max(photo.naturalW ?? 1600, photo.naturalH ?? 1600)
-  return Math.min(1600, Math.round(longEdge))
+  const cap = Math.min(1600, Math.round(longEdge))
+  return box.width >= box.height
+    ? { w: cap, h: Math.round((cap * box.height) / box.width) }
+    : { w: Math.round((cap * box.width) / box.height), h: cap }
 }
 
 function readAsDataURL(file: File): Promise<string> {
@@ -65,11 +75,11 @@ export async function readFileAsPendingPhoto(file: File): Promise<PendingPhoto> 
 }
 
 /**
- * Bakes the crop modal's result into a flat square JPEG data URL — the
- * template schema only carries `photo.src` (no zoom/pan/naturalW/H, unlike
- * `Photo`), so the pan/zoom the author dialed in has to be rendered into
- * the pixels once, here, rather than stored for the coordinator app to
- * re-apply later.
+ * Bakes the crop modal's result into a flat JPEG data URL at `{w, h}` (the
+ * shape `cropCellSize` returns) — the template schema only carries
+ * `photo.src` (no zoom/pan/naturalW/H, unlike `Photo`), so the pan/zoom the
+ * author dialed in has to be rendered into the pixels once, here, rather
+ * than stored for the coordinator app to re-apply later.
  *
  * Deliberately not a reuse of `features/export/shared.ts#preRenderPhoto`:
  * that helper hardcodes a 4x supersample (`cellW * 4`/`ctx.scale(4, 4)`),
@@ -78,12 +88,12 @@ export async function readFileAsPendingPhoto(file: File): Promise<PendingPhoto> 
  * instead, reusing only the pure cover-fit/pan-clamp math
  * (coverRect/clampPan), which both helpers share.
  */
-export async function bakeCroppedPhoto(photo: PendingPhoto, crop: CropResult, size: number): Promise<string> {
+export async function bakeCroppedPhoto(photo: PendingPhoto, crop: CropResult, { w, h }: { w: number; h: number }): Promise<string> {
   const img = await loadImageElement(photo.src)
 
   const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
+  canvas.width = w
+  canvas.height = h
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('no 2D context')
 
@@ -92,17 +102,17 @@ export async function bakeCroppedPhoto(photo: PendingPhoto, crop: CropResult, si
   // transparent source (or any sliver coverRect doesn't fully cover)
   // lands on white instead.
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, size, size)
+  ctx.fillRect(0, 0, w, h)
 
-  const rect = coverRect(photo.naturalW, photo.naturalH, size, size)
-  const { x: panX, y: panY } = clampPan(photo.naturalW, photo.naturalH, size, size, crop.panX, crop.panY, crop.zoom)
+  const rect = coverRect(photo.naturalW, photo.naturalH, w, h)
+  const { x: panX, y: panY } = clampPan(photo.naturalW, photo.naturalH, w, h, crop.panX, crop.panY, crop.zoom)
 
   // Replicate the preview/crop-modal's CSS: translate(panX,panY)
   // scale(zoom) with transform-origin: center center.
-  ctx.translate(size / 2, size / 2)
+  ctx.translate(w / 2, h / 2)
   ctx.translate(panX, panY)
   ctx.scale(crop.zoom, crop.zoom)
-  ctx.translate(-size / 2, -size / 2)
+  ctx.translate(-w / 2, -h / 2)
   ctx.drawImage(img, rect.left, rect.top, rect.width, rect.height)
 
   return canvas.toDataURL('image/jpeg', 0.85)

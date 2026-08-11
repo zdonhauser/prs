@@ -8,9 +8,20 @@ interface PhotoCropModalProps {
   cellH: number
   onSave: (result: CropResult) => void
   onCancel: () => void
+  /**
+   * How the cropped photo is finally displayed. 'rect' (the default, and
+   * what the story app's photo cells are) frames the crop as a rectangle;
+   * 'circle' masks the frame to a circle so a flyer template's author sees
+   * the shape the photo actually lands in.
+   *
+   * Purely presentational: the pan clamp still keeps the image covering the
+   * full square cell, and a circle inscribed in a covered square is covered
+   * too, so no geometry changes.
+   */
+  shape?: 'rect' | 'circle'
 }
 
-export function PhotoCropModal({ photo, cellW, cellH, onSave, onCancel }: PhotoCropModalProps) {
+export function PhotoCropModal({ photo, cellW, cellH, onSave, onCancel, shape = 'rect' }: PhotoCropModalProps) {
   const [zoom, setZoom] = useState(photo.zoom ?? 1)
   const [panX, setPanX] = useState(photo.panX ?? 0)
   const [panY, setPanY] = useState(photo.panY ?? 0)
@@ -142,12 +153,15 @@ export function PhotoCropModal({ photo, cellW, cellH, onSave, onCancel }: PhotoC
       <div className="crop-modal" onClick={e => e.stopPropagation()}>
         <div className="crop-modal-header">
           <h3>Adjust Photo</h3>
-          <p>Drag to reposition · Pinch or scroll to zoom</p>
+          <p>
+            Drag to reposition · Pinch or scroll to zoom
+            {shape === 'circle' && ' · Only what shows inside the circle is printed'}
+          </p>
         </div>
 
         <div
           ref={frameRef}
-          className="crop-frame"
+          className={`crop-frame ${shape === 'circle' ? 'crop-frame--circle' : ''}`}
           style={{ width: frameW, height: frameH }}
           onMouseDown={onMouseDown}
         >

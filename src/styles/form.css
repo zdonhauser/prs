@@ -272,6 +272,15 @@
   border-radius: 0;
 }
 
+/* ── Flyer palette picker (template creator) ─────────── */
+/* Reuses .theme-grid/.theme-btn/.theme-swatch above verbatim — see
+   PalettePicker.tsx's header comment — this just adds the section spacing
+   ColorControl's own .color-control rule gets, since PalettePicker sits
+   directly above a stack of them. */
+.palette-grid {
+  margin-bottom: 16px;
+}
+
 /* ── Template picker (event flyer) ──────────────────── */
 
 .template-picker-group {
@@ -419,6 +428,13 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   cursor: pointer;
+}
+
+/* The session custom-colors row (double-click-a-swatch results, shared by
+   every ColorControl — see CreatorApp's customColors/addCustomColor) sits
+   just under the palette/custom-input row above it. */
+.color-swatch-row--custom {
+  margin-top: 4px;
 }
 
 .field-checkbox-row {

@@ -11,15 +11,17 @@ import type { FlyerTemplate } from '@/types'
 //   1. Background raster — hero, watermark, ornament, detail-row icons,
 //      footer band/logo, AND THE HEADLINE (see below) — everything that's
 //      either genuinely just pixels, or can't be reproduced as vector text.
-//   2. The circular photo — pre-rendered to an offscreen canvas with a
-//      circular clip (real alpha outside the disc) so it can be placed as
+//   2. The elliptical photo — pre-rendered to an offscreen canvas with an
+//      elliptical clip (real alpha outside the disc; a circle when the box
+//      is square, which is still the common case) so it can be placed as
 //      its own PNG object, the flyer's equivalent of the story's per-cell
 //      photo layer.
-//   3. The teal ring — redrawn as a vector circle stroke *after* the photo,
+//   3. The teal ring — redrawn as a vector ellipse stroke *after* the photo,
 //      matching flyer.css's z-index (the ring straddles the photo's own
 //      edge; baking it into the background would let the photo layer,
 //      added afterward, paint over the part of the ring that crosses the
-//      photo).
+//      photo). Then the headline patch on top of both, since the headline
+//      outranks the ring (z-index 5 vs 4) and nothing crosses the letters.
 //   4. Vector text — eyebrow, subtitle, description, the four detail-row
 //      labels and the coordinator's entered values, and the footer label +
 //      its entered value. Measured the same way exportPdf.ts measures text
@@ -65,28 +67,32 @@ import type { FlyerTemplate } from '@/types'
 // touch it).
 const DETAIL_RASTER_SCALE = 3
 
-// Renders the live `<img>` cover-fit into a `size`×`size` offscreen canvas,
-// clipped to the inscribed circle so the corners stay transparent (kept as
+// Renders the live `<img>` cover-fit into a `w`×`h` offscreen canvas,
+// clipped to the inscribed ellipse so the corners stay transparent (kept as
 // real alpha by exporting PNG, not JPEG) — the flyer's photo has no crop
-// UI, so pan/zoom are always 0/0/1, unlike the story's preRenderPhoto.
-function preRenderCircularPhoto(img: HTMLImageElement, naturalW: number, naturalH: number, size: number): HTMLCanvasElement {
+// UI, so pan/zoom are always 0/0/1, unlike the story's preRenderPhoto. `w`
+// and `h` are equal for the default (circular) box but need not be — a
+// template author can widen or heighten the box independently, and
+// `ctx.ellipse` degenerates to a circle when they're equal, so no special
+// case is needed for the common square box.
+function preRenderEllipticalPhoto(img: HTMLImageElement, naturalW: number, naturalH: number, w: number, h: number): HTMLCanvasElement {
   const offscreen = document.createElement('canvas')
-  offscreen.width = size * DETAIL_RASTER_SCALE
-  offscreen.height = size * DETAIL_RASTER_SCALE
+  offscreen.width = w * DETAIL_RASTER_SCALE
+  offscreen.height = h * DETAIL_RASTER_SCALE
   const ctx = offscreen.getContext('2d')!
   ctx.scale(DETAIL_RASTER_SCALE, DETAIL_RASTER_SCALE)
 
-  const rect = coverRect(naturalW, naturalH, size, size)
-  const { x: panX, y: panY } = clampPan(naturalW, naturalH, size, size, 0, 0, 1)
+  const rect = coverRect(naturalW, naturalH, w, h)
+  const { x: panX, y: panY } = clampPan(naturalW, naturalH, w, h, 0, 0, 1)
 
   ctx.save()
   ctx.beginPath()
-  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
+  ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
   ctx.clip()
 
-  ctx.translate(size / 2, size / 2)
+  ctx.translate(w / 2, h / 2)
   ctx.translate(panX, panY)
-  ctx.translate(-size / 2, -size / 2)
+  ctx.translate(-w / 2, -h / 2)
   ctx.drawImage(img, rect.left, rect.top, rect.width, rect.height)
   ctx.restore()
 
@@ -196,20 +202,49 @@ export async function exportFlyerPdf(flyerElement: HTMLElement | null, { templat
   })
   pdf.addImage(backgroundCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 8.5, 11)
 
-  // ── Layer 2: the circular photo, as its own PNG object (real alpha) ──
+  // ── Layer 2: the elliptical photo, as its own PNG object (real alpha) ──
   const photoBox = flyerElement.querySelector<HTMLElement>('.flyer-photo')
   const img = photoBox?.querySelector('img') ?? null
   if (photoBox && img) {
-    const { xIn, yIn, wIn } = rectToPageInches(photoBox.getBoundingClientRect(), pageRect, domScale)
-    const sizePx = wIn * 96 // .flyer-photo is always a square box
-    const canvas = preRenderCircularPhoto(img, img.naturalWidth, img.naturalHeight, sizePx)
+    const { xIn, yIn, wIn, hIn } = rectToPageInches(photoBox.getBoundingClientRect(), pageRect, domScale)
+    // .flyer-photo's box is template data now (FlyerTemplate.photo.box) —
+    // width and height need not be equal, so both are read off the live
+    // rect rather than assuming a square.
+    const canvas = preRenderEllipticalPhoto(img, img.naturalWidth, img.naturalHeight, wIn * 96, hIn * 96)
     // 'MEDIUM' Flate-compresses the raw pixel data jsPDF would otherwise
     // store verbatim — see DETAIL_RASTER_SCALE's comment for why this alone
     // isn't enough for a photographic image and the scale is lowered too.
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', xIn, yIn, wIn, wIn, undefined, 'MEDIUM')
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', xIn, yIn, wIn, hIn, undefined, 'MEDIUM')
   }
 
-  // ── Layer 2.5: the headline, its own raster patch drawn after the photo ──
+  // ── Layer 2.5: the teal ring, vector ellipse stroke drawn after the photo ──
+  // Drawn BEFORE the headline patch, matching flyer.css: the headline sits
+  // above the ring (z-index 5 vs 4), so the ring never paints across the
+  // letters it crosses.
+  const ring = flyerElement.querySelector<HTMLElement>('.flyer-ring')
+  if (ring) {
+    const ringStyle = getComputedStyle(ring)
+    const borderWidthPx = parseFloat(ringStyle.borderTopWidth)
+    if (borderWidthPx > 0) {
+      const { xIn, yIn, wIn, hIn } = rectToPageInches(ring.getBoundingClientRect(), pageRect, domScale)
+      const { r, g, b } = parseRgb(ringStyle.borderTopColor)
+      const bwIn = borderWidthPx / 96
+      // border-box sizing draws the border inside the element's own edge,
+      // so the stroke's true centerline sits half a border-width in from
+      // the box edge on each axis — same inset logic exportPdf.ts uses for
+      // the story's photo-frame rect, applied to ellipse radii instead of a
+      // single circle radius (pdf.ellipse degenerates to a circle when
+      // rxIn === ryIn, so the default square box needs no special case).
+      const cxIn = xIn + wIn / 2
+      const cyIn = yIn + hIn / 2
+      const rxIn = wIn / 2 - bwIn / 2
+      const ryIn = hIn / 2 - bwIn / 2
+      pdf.setDrawColor(r, g, b)
+      pdf.setLineWidth(bwIn)
+      pdf.ellipse(cxIn, cyIn, rxIn, ryIn, 'S')
+    }
+  }
+  // ── Layer 3: the headline, its own raster patch, drawn last ──
   // A transparent-background capture of just this element — still pixels,
   // still no vector text, still no embedded font — composited on top of
   // the photo instead of baked into the layer-1 background. See the
@@ -228,30 +263,6 @@ export async function exportFlyerPdf(flyerElement: HTMLElement | null, { templat
     pdf.addImage(headlineCanvas.toDataURL('image/png'), 'PNG', xIn, yIn, wIn, hIn, undefined, 'MEDIUM')
   }
 
-  // ── Layer 3: the teal ring, vector circle stroke drawn after the photo ──
-  // (and after the headline patch — the live page's DOM order puts the
-  // ring after the headline at the same z-index, so the ring paints over
-  // any headline pixels it crosses too, same as it does over the photo.)
-  const ring = flyerElement.querySelector<HTMLElement>('.flyer-ring')
-  if (ring) {
-    const ringStyle = getComputedStyle(ring)
-    const borderWidthPx = parseFloat(ringStyle.borderTopWidth)
-    if (borderWidthPx > 0) {
-      const { xIn, yIn, wIn, hIn } = rectToPageInches(ring.getBoundingClientRect(), pageRect, domScale)
-      const { r, g, b } = parseRgb(ringStyle.borderTopColor)
-      const bwIn = borderWidthPx / 96
-      // border-box sizing draws the border inside the element's own edge,
-      // so the stroke's true centerline sits half a border-width in from
-      // the box edge — same inset logic exportPdf.ts uses for the story's
-      // photo-frame rect, applied to a circle radius instead.
-      const cxIn = xIn + wIn / 2
-      const cyIn = yIn + hIn / 2
-      const rIn = wIn / 2 - bwIn / 2
-      pdf.setDrawColor(r, g, b)
-      pdf.setLineWidth(bwIn)
-      pdf.circle(cxIn, cyIn, rIn, 'S')
-    }
-  }
 
   // ── Layer 4: vector text ──────────────────────────────────────────────
   // Both wrap on screen (neither .flyer-eyebrow nor .flyer-subtitle sets
