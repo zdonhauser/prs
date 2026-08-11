@@ -74,6 +74,10 @@
   border-radius: 50%;
   border: 7px solid var(--f-ring);
   z-index: 4;
+  /* Decorative, and it sits above the photo — without this it swallows
+     every click aimed at the photo underneath, so the creator's
+     click-the-photo-to-crop never fires. Same reason as .flyer-headline. */
+  pointer-events: none;
 }
 
 .flyer-photo {
@@ -133,6 +137,12 @@
      stroke painted across the letters instead. The headline is the most
      important thing on the flyer; nothing crosses it. */
   z-index: 5;
+  /* This element's BOX spans the full page width (see the width comment
+     above — it has to, so html2canvas captures an overflowing line), even
+     though its visible text doesn't. Sitting at the top of the stack, that
+     invisible box covered the whole photo bubble and ate clicks meant for
+     it. It's display text; nothing here is interactive. */
+  pointer-events: none;
 }
 
 .flyer-headline-line {

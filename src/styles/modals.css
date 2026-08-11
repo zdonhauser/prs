@@ -217,3 +217,73 @@
   background: #1a4480;
 }
 
+
+/* ── Template creator: what-to-do-next after an export ── */
+/* Deliberately a dismissible panel rather than the transient toast used
+   elsewhere: exporting only produces a file, and the step that actually puts
+   a template in front of coordinators (getting it into the repo) is the one
+   an author cannot guess. It stays until acknowledged. */
+
+.export-done-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 20px;
+}
+
+.export-done {
+  background: white;
+  border-radius: 14px;
+  padding: 28px;
+  max-width: 460px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.export-done h3 {
+  margin: 0 0 4px;
+  font-size: 19px;
+  color: #1a202c;
+}
+
+.export-done p {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #4a5568;
+}
+
+.export-done-file {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px !important;
+  color: #2056a0 !important;
+  word-break: break-all;
+}
+
+.export-done code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  background: #f1f5f9;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.export-done-note {
+  font-size: 13px !important;
+  color: #64748b !important;
+}
+
+.export-done-mail {
+  display: inline-block;
+  text-decoration: none;
+  margin-bottom: 14px;
+}
+
+.export-done .btn-ghost {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}

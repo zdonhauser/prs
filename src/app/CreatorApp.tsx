@@ -9,7 +9,7 @@ import { CreatorPanel } from '@/features/template-creator/CreatorPanel'
 // mirroring how App.tsx wires PhotoCropModal in for the story app.
 import { PhotoCropModal } from '@/features/photos/PhotoCropModal'
 import { FlyerCanvas } from '@/features/flyer-preview/FlyerCanvas'
-import { makeDefaultTemplate, validateTemplate, slugify, emptyValues, FLYER_FIELDS, resolvePhotoBox } from '@/domain/flyerTemplate'
+import { makeDefaultTemplate, validateTemplate, slugify, emptyValues, formatMonth, FLYER_FIELDS, resolvePhotoBox } from '@/domain/flyerTemplate'
 import { templateById } from '@/config/flyerTemplates'
 import { deliverFile } from '@/features/export/shared'
 import { PAGE_W, PAGE_H } from '@/config/page'
@@ -19,6 +19,32 @@ import { readFileAsPendingPhoto, bakeCroppedPhoto, cropCellSize, loadImageElemen
 // values in it — this creator's live preview shows the template exactly as
 // a coordinator would before typing anything, i.e. the labels/icons only.
 const PREVIEW_VALUES = emptyValues()
+
+// The webmaster who adds exported templates to the site.
+const WEBMASTER_EMAIL = 'zac@donrey.dev'
+
+// Pre-writes the handoff email. A page cannot attach a file to a mailto — the
+// spec has no attachment parameter and every mail client ignores attempts —
+// so the body tells the author to attach it themselves rather than pretending
+// it's already there.
+function mailtoHref(fileName: string, template: FlyerTemplate): string {
+  const subject = `New PRS event flyer template: ${template.name}`
+  const body = [
+    `Hi,`,
+    ``,
+    `Please add this flyer template to the Event Flyer Builder.`,
+    ``,
+    `Template: ${template.name}`,
+    `Month: ${formatMonth(template.month)}`,
+    `File: ${fileName} (attached)`,
+    ``,
+    `It goes in src/config/flyerTemplates/ in the prs repository — the README's`,
+    `"adding a flyer template" section has the steps.`,
+    ``,
+    `Thanks!`,
+  ].join('\n')
+  return `mailto:${WEBMASTER_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
 
 export default function CreatorApp() {
   const [template, setTemplate] = useState<FlyerTemplate>(() => makeDefaultTemplate())
@@ -43,6 +69,7 @@ export default function CreatorApp() {
   const [photoSource, setPhotoSource] = useState<{ photo: PendingPhoto; crop: CropResult } | null>(null)
   const [exporting, setExporting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [exportedFile, setExportedFile] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   // Custom colors picked via a ColorControl's double-click-a-swatch flow
   // (see ColorControl), shared by all eight controls so a color dialed in
@@ -247,7 +274,11 @@ export default function CreatorApp() {
       const validated = validateTemplate(template)
       const blob = new Blob([JSON.stringify(validated, null, 2)], { type: 'application/json' })
       await deliverFile(blob, `${validated.id}.json`)
-      showToast('Template exported!')
+      // Not a toast: a template is only half-delivered when the file lands in
+      // Downloads, and the rest of the job (getting it into the repo) is the
+      // part an author has no way to guess. This stays on screen until
+      // dismissed, and names the actual file.
+      setExportedFile(`${validated.id}.json`)
     } catch (err) {
       showToast(err instanceof Error ? `Can't export: ${err.message}` : "Can't export this template yet.")
     }
@@ -324,6 +355,36 @@ export default function CreatorApp() {
         />
       )}
 
+      {exportedFile && (
+        <div className="export-done-overlay" onClick={() => setExportedFile(null)}>
+          <div className="export-done" onClick={e => e.stopPropagation()}>
+            <h3>Template saved</h3>
+            <p className="export-done-file">{exportedFile}</p>
+            <p>
+              Saving the file doesn't put it in the Event Flyer Builder yet — coordinators
+              won't see this template until it's added to the site.
+            </p>
+            <p>
+              <strong>Send <code>{exportedFile}</code> to the webmaster</strong> and ask them to
+              add it to the Event Flyer Builder.
+            </p>
+            <a className="btn-primary-sm export-done-mail" href={mailtoHref(exportedFile, template)}>
+              Email the webmaster
+            </a>
+            <p className="export-done-note">
+              That opens your mail app with the message written — <strong>attach{' '}
+              <code>{exportedFile}</code> yourself before sending</strong>, since a web page
+              isn't allowed to attach files to an email for you. On an iPad the file is
+              wherever you saved it, usually Files &rsaquo; Downloads.
+            </p>
+            <p className="export-done-note">
+              Once it's added, it shows up in the builder's template list under{' '}
+              {formatMonth(template.month)}.
+            </p>
+            <button type="button" className="btn-ghost" onClick={() => setExportedFile(null)}>Close</button>
+          </div>
+        </div>
+      )}
       {toast && <div className="toast">{toast}</div>}
     </div>
   )
