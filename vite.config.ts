@@ -83,6 +83,11 @@ export default defineConfig({
       // old build on the staging URL. Deny staging paths so the staging
       // site always loads its own build.
       workbox: {
+        // The default pattern set is js/css/html only. The theme logos are
+        // now hashed build assets rather than public/ files listed in
+        // includeAssets, so images have to be globbed explicitly or the
+        // printed page loses its logo offline.
+        globPatterns: ['**/*.{js,css,html,png,svg}'],
         navigateFallbackDenylist: [/\/staging\//],
         // heic-to's bundled libheif WASM decoder chunk is ~3 MB, over
         // workbox's default 2 MiB precache limit. It's dynamically
@@ -92,7 +97,6 @@ export default defineConfig({
         // like any other asset rather than excluding it from offline use.
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
-      includeAssets: ['logo-color.png', 'logo-black.png', 'logo-white.png', 'apple-touch-icon.png'],
     })
   ]
 })

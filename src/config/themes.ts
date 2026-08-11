@@ -1,3 +1,7 @@
+import logoBlackUrl from '../assets/logo-black.png'
+import logoColorUrl from '../assets/logo-color.png'
+import logoWhiteUrl from '../assets/logo-white.png'
+
 export const themes = [
   { id: 'classic',    name: 'Classic Blue' },
   { id: 'navy-gold',  name: 'Navy & Gold' },
@@ -44,8 +48,13 @@ export const themeLogo: Record<ThemeId, 'color' | 'black' | 'white'> = {
   'prs-vibrant': 'color',
 }
 
+// Imported rather than referenced as public/ files by path. The suite serves
+// its tools from subdirectories (/success-story/, /event-flyer/), so a
+// page-relative './logo-white.png' resolves against the tool's directory and
+// 404s. Importing lets vite emit a hashed URL that resolves correctly from
+// any page depth, and gets the logos precached with the rest of the bundle.
 export const logoSrc: Record<'color' | 'black' | 'white', string> = {
-  color: './logo-color.png',
-  black: './logo-black.png',
-  white: './logo-white.png',
+  color: logoColorUrl,
+  black: logoBlackUrl,
+  white: logoWhiteUrl,
 }
