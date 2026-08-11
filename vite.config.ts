@@ -95,7 +95,22 @@ export default defineConfig({
         // so without it here an offline first load has no manifest (and no
         // install prompt).
         globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
-        navigateFallbackDenylist: [/\/staging\//],
+        // No navigation fallback. vite-plugin-pwa defaults this to
+        // index.html, which is right for a single-page app and wrong here:
+        // it installs a NavigationRoute that answers EVERY navigation from
+        // the precache with the landing page. Once the service worker was
+        // controlling, /event-flyer/, /template-creator/ and /success-story/
+        // all silently served the main menu instead of the requested tool.
+        //
+        // Every page in this suite is a real file on GitHub Pages, so there
+        // is no client-side routing to fall back for. Offline still works:
+        // workbox's precache resolves a directory URL to its index.html, and
+        // all four pages are precached.
+        //
+        // This also removes the reason for the old /staging/ denylist — that
+        // existed only to stop the prod fallback answering staging
+        // navigations with prod's cached index.html.
+        navigateFallback: null,
         // heic-to's bundled libheif WASM decoder chunk is ~3 MB, over
         // workbox's default 2 MiB precache limit. It's dynamically
         // imported (see src/services/imageConversion.ts) and only
