@@ -27,7 +27,7 @@ import { PalettePicker } from './PalettePicker'
 
 /** A small "Modified" pill a disclosure's `<summary>` shows when its
     contents differ from the template's defaults, so collapsing the eight
-    individual colour controls (or the photo/watermark sliders) behind a
+    individual color controls (or the photo/watermark sliders) behind a
     closed disclosure can't quietly hide a real customization from an
     author skimming the panel. */
 function ModifiedBadge() {
@@ -108,10 +108,10 @@ export function CreatorPanel({
   const photoBox = resolvePhotoBox(template)
   const hasCustomPhotoBox = template.photo.box !== undefined
 
-  // "Modified" for the Advanced colour options disclosure means the eight
-  // colours have drifted from BOTH every coordinated palette AND the
-  // template's own starting colours — checked against both, not just
-  // palettes, because makeDefaultTemplate's colours predate the palette
+  // "Modified" for the Advanced color options disclosure means the eight
+  // colors have drifted from BOTH every coordinated palette AND the
+  // template's own starting colors — checked against both, not just
+  // palettes, because makeDefaultTemplate's colors predate the palette
   // picker and don't equal any single palette's own values, which would
   // otherwise mark every fresh template "Modified" before its author has
   // touched a thing.
@@ -348,7 +348,7 @@ export function CreatorPanel({
         <PalettePicker colors={template.colors} onSelect={onPaletteSelect} />
         <details className="form-disclosure">
           <summary>
-            Advanced colour options
+            Advanced color options
             {colorsModified && <ModifiedBadge />}
           </summary>
           <div className="form-disclosure-content">

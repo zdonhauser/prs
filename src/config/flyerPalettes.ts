@@ -1,7 +1,7 @@
-// Coordinated colour schemes for the flyer — the equivalent of the story
+// Coordinated color schemes for the flyer — the equivalent of the story
 // app's themes, and the starting point a template author is meant to use.
 // One click sets all eight FlyerColors keys to values chosen to work
-// together; the per-colour swatches stay available for deviating afterwards.
+// together; the per-color swatches stay available for deviating afterwards.
 //
 // Static data only, no logic.
 //
@@ -20,7 +20,7 @@
 // All clear 4.5:1 (WCAG AA for normal text, and comfortably past the 3:1
 // large-text bar the headline actually falls under). Three schemes needed
 // tuning to get there — Teal Fresh, Warm Earth and Sunrise all started from
-// their story theme's colours at 2.0-3.1:1, so their heroBg was darkened
+// their story theme's colors at 2.0-3.1:1, so their heroBg was darkened
 // and/or their accent lightened. Keep that check in mind when adding one.
 import type { FlyerColors } from '@/types'
 

@@ -1,7 +1,7 @@
-// One-click coordinated colour schemes for the flyer, at the top of the
-// creator's Colours section. Mirrors ThemePicker's own convention
+// One-click coordinated color schemes for the flyer, at the top of the
+// creator's Colors section. Mirrors ThemePicker's own convention
 // (conventions brief §10) of importing its data straight from config and
-// rendering a swatch grid — the two-colour swatch chip is the same idiom
+// rendering a swatch grid — the two-color swatch chip is the same idiom
 // ThemePicker uses for the story app's theme grid, reusing its
 // `.theme-grid`/`.theme-btn`/`.theme-swatch` styling rather than inventing
 // a parallel set of classes for what is visually the identical control.

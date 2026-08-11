@@ -66,7 +66,7 @@ export const DEFAULT_PHOTO_BOX: PhotoBox = { left: 401, top: -32, width: 535, he
 
 /**
  * The colors `makeDefaultTemplate` starts a new template from — also the
- * baseline the creator's "Advanced colour options" disclosure compares
+ * baseline the creator's "Advanced color options" disclosure compares
  * against to decide whether to show its "Modified" marker: a fresh
  * template shouldn't read as modified before its author has touched
  * anything, even though these values don't happen to equal any single

@@ -144,7 +144,7 @@ export default function CreatorApp() {
 
   // One click applies all eight FlyerColors keys at once — the palette
   // picker's whole point (see flyerPalettes.ts). A fresh copy of the
-  // palette's colors object, not the palette's own object, so per-colour
+  // palette's colors object, not the palette's own object, so per-color
   // deviations afterward (via updateColor) never mutate config data.
   const applyPalette = (colors: FlyerColors) => {
     setTemplate(prev => ({ ...prev, colors: { ...colors } }))
