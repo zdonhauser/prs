@@ -513,3 +513,24 @@ h2 + .form-disclosure {
   height: 16px;
 }
 
+
+/* Toggle beside the creator's PREVIEW label: swaps the stand-in coordinator
+   details in and out, so an author can check both the filled layout and the
+   blank state a coordinator first sees. */
+.preview-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--text-muted);
+  text-transform: none;
+  cursor: pointer;
+}
+
+.preview-toggle input {
+  accent-color: var(--blue);
+  cursor: pointer;
+}

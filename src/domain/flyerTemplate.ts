@@ -470,6 +470,32 @@ export function slugify(name: string): string {
 }
 
 /** All eight flyer fields, defaulted to empty strings. */
+/**
+ * Stand-in coordinator values for the template creator's preview.
+ *
+ * The creator designs a template, so its preview would otherwise show every
+ * fillable field blank — leaving an author unable to see where the footer's
+ * email/phone/address/website land, or how much room a real value takes.
+ * These are deliberately realistic in LENGTH, since the point is to show the
+ * layout truthfully, and obviously fake in CONTENT, so nobody mistakes a
+ * preview for a finished flyer.
+ *
+ * Creator-only. The coordinator app keeps `emptyValues()`: a real flyer must
+ * never render invented details that someone could export by accident.
+ */
+export function exampleValues(): Record<FlyerField, string> {
+  return {
+    date: 'Saturday, September 12',
+    time: '10:00 AM - 1:00 PM',
+    location: 'Community Room, 123 Example Ave',
+    additionalInfo: 'Free snacks and door prizes',
+    rscEmail: 'example@example.com',
+    phone: '(555) 123-4567',
+    address: '123 Example Ave, Springfield',
+    website: 'www.example.com',
+  }
+}
+
 export function emptyValues(): Record<FlyerField, string> {
   return {
     date: '',

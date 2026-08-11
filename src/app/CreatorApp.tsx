@@ -9,7 +9,7 @@ import { CreatorPanel } from '@/features/template-creator/CreatorPanel'
 // mirroring how App.tsx wires PhotoCropModal in for the story app.
 import { PhotoCropModal } from '@/features/photos/PhotoCropModal'
 import { FlyerCanvas } from '@/features/flyer-preview/FlyerCanvas'
-import { makeDefaultTemplate, validateTemplate, slugify, emptyValues, formatMonth, FLYER_FIELDS, resolvePhotoBox } from '@/domain/flyerTemplate'
+import { makeDefaultTemplate, validateTemplate, slugify, emptyValues, exampleValues, formatMonth, FLYER_FIELDS, resolvePhotoBox } from '@/domain/flyerTemplate'
 import { templateById } from '@/config/flyerTemplates'
 import { deliverFile } from '@/features/export/shared'
 import { PAGE_W, PAGE_H } from '@/config/page'
@@ -18,7 +18,12 @@ import { readFileAsPendingPhoto, bakeCroppedPhoto, cropCellSize, loadImageElemen
 // Coordinators never see a template's own preview with any of their entered
 // values in it — this creator's live preview shows the template exactly as
 // a coordinator would before typing anything, i.e. the labels/icons only.
-const PREVIEW_VALUES = emptyValues()
+// Two ways to look at a template being designed: with realistic stand-in
+// details, which is what an author needs to judge spacing, and empty, which
+// is how a coordinator first sees it. Examples by default — the blank state
+// is the one you can already picture.
+const EXAMPLE_PREVIEW_VALUES = exampleValues()
+const EMPTY_PREVIEW_VALUES = emptyValues()
 
 // The webmaster who adds exported templates to the site.
 const WEBMASTER_EMAIL = 'zac@donrey.dev'
@@ -99,6 +104,7 @@ export default function CreatorApp() {
   const [exporting, setExporting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [exportedFile, setExportedFile] = useState<string | null>(null)
+  const [showExamples, setShowExamples] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   // Custom colors picked via a ColorControl's double-click-a-swatch flow
   // (see ColorControl), shared by all eight controls so a color dialed in
@@ -359,13 +365,23 @@ export default function CreatorApp() {
         )}
 
         <div className="preview-area" ref={previewAreaRef}>
-          <div className="preview-label">Preview</div>
+          <div className="preview-label">
+            Preview
+            <label className="preview-toggle">
+              <input
+                type="checkbox"
+                checked={showExamples}
+                onChange={e => setShowExamples(e.target.checked)}
+              />
+              Show example details
+            </label>
+          </div>
           <div className="preview-scaler" style={{ width: PAGE_W * scale, height: PAGE_H * scale }}>
             <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: PAGE_W, height: PAGE_H }}>
               <div style={{ boxShadow: '0 6px 32px rgba(0,0,0,0.3)' }}>
                 <FlyerCanvas
                   template={template}
-                  values={PREVIEW_VALUES}
+                  values={showExamples ? EXAMPLE_PREVIEW_VALUES : EMPTY_PREVIEW_VALUES}
                   onPhotoClick={template.photo.src ? handlePhotoAdjust : undefined}
                 />
               </div>
