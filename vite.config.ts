@@ -22,6 +22,9 @@ export default defineConfig({
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         'success-story': fileURLToPath(new URL('./success-story/index.html', import.meta.url)),
         'event-flyer': fileURLToPath(new URL('./event-flyer/index.html', import.meta.url)),
+        // Not linked from the landing page or either tool — reached only
+        // by typing the URL. See template-creator/index.html.
+        'template-creator': fileURLToPath(new URL('./template-creator/index.html', import.meta.url)),
       },
     },
   },

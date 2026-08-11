@@ -1,4 +1,8 @@
-import { jsPDF } from 'jspdf'
+// Type-only: this module never instantiates a jsPDF, only types deliverPdf's
+// parameter — so the actual jspdf (and its transitive html2canvas-adjacent
+// weight) can be fully elided from any bundle that only needs deliverFile,
+// like the template creator's.
+import type { jsPDF } from 'jspdf'
 import { coverRect, clampPan } from '@/domain/photoGeometry'
 import type { Photo } from '@/types'
 
@@ -91,14 +95,20 @@ export function preRenderPhoto(img: HTMLImageElement, photo: Partial<Photo>, cel
 // while an actual touchscreen (iPad) reports "coarse" — so this only
 // fires for a device that both claims touch support AND is actually
 // touch-operated.
-export async function deliverPdf(pdf: jsPDF, filename: string): Promise<void> {
-  const isIOS =
+// Extracted so `deliverFile` (below) can share this exact detection without
+// duplicating the reasoning comment. Behavior is unchanged from the inline
+// version this was pulled out of.
+function isIOSDevice(): boolean {
+  return (
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' &&
       navigator.maxTouchPoints > 1 &&
       window.matchMedia('(pointer: coarse)').matches)
+  )
+}
 
-  if (isIOS && navigator.canShare) {
+export async function deliverPdf(pdf: jsPDF, filename: string): Promise<void> {
+  if (isIOSDevice() && navigator.canShare) {
     const file = new File([pdf.output('blob')], filename, { type: 'application/pdf' })
     if (navigator.canShare({ files: [file] })) {
       try {
@@ -112,4 +122,34 @@ export async function deliverPdf(pdf: jsPDF, filename: string): Promise<void> {
   }
 
   pdf.save(filename)
+}
+
+// Generic sibling of deliverPdf, for callers that aren't building a jsPDF
+// document — the template creator's JSON export is the first one. Same
+// iOS-Web-Share-vs-plain-download branching (see deliverPdf's own comment,
+// above, for why); the non-iOS path can't reuse jsPDF's `save()` here since
+// there's no jsPDF instance, so it does the equivalent itself: an object
+// URL behind a hidden, clicked <a download>, revoked right after.
+export async function deliverFile(blob: Blob, filename: string): Promise<void> {
+  if (isIOSDevice() && navigator.canShare) {
+    const file = new File([blob], filename, { type: blob.type || 'application/octet-stream' })
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: filename })
+        return
+      } catch (err) {
+        if (err && (err as { name?: string }).name === 'AbortError') return // user cancelled the share sheet
+        // fall through to the plain download below
+      }
+    }
+  }
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }

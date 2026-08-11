@@ -222,6 +222,22 @@ export function pickDefaultTemplateId(templates: FlyerTemplate[], now: Date = ne
   return templates[0].id
 }
 
+/**
+ * Derives a template `id` from its `name` — used by the template creator so
+ * typing a name fills in a matching id/filename without the author typing
+ * both. Lowercases, collapses runs of non-alphanumerics to a single '-',
+ * and trims leading/trailing '-'. Pure and total: `''` in, `''` out (the
+ * caller falls back to a placeholder, the same one `makeDefaultTemplate`
+ * uses, rather than this function inventing one).
+ */
+export function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 /** All five flyer fields, defaulted to empty strings. */
 export function emptyValues(): Record<FlyerField, string> {
   return {

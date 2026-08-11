@@ -10,6 +10,7 @@ import {
   isFieldEditable,
   emptyValues,
   pickDefaultTemplateId,
+  slugify,
 } from './flyerTemplate'
 
 // Loaded via import.meta.glob (not a static import of the config module) so
@@ -235,5 +236,24 @@ describe('pickDefaultTemplateId', () => {
 
   it('returns an empty string when there are no templates', () => {
     expect(pickDefaultTemplateId([], new Date(2026, 7, 15))).toBe('')
+  })
+})
+
+describe('slugify', () => {
+  it('lowercases and hyphenates a normal title', () => {
+    expect(slugify('Safer Communities')).toBe('safer-communities')
+  })
+
+  it('collapses runs of punctuation/whitespace into one hyphen', () => {
+    expect(slugify('Winter  Safety --- Fair!')).toBe('winter-safety-fair')
+  })
+
+  it('trims leading and trailing hyphens', () => {
+    expect(slugify('  -Holiday Block Party- ')).toBe('holiday-block-party')
+  })
+
+  it('returns an empty string for an empty or all-punctuation name', () => {
+    expect(slugify('')).toBe('')
+    expect(slugify('!!!')).toBe('')
   })
 })
