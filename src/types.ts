@@ -59,3 +59,46 @@ export interface CropResult {
   panX: number
   panY: number
 }
+
+export type FlyerField = 'date' | 'time' | 'location' | 'additionalInfo' | 'rscEmail'
+
+/**
+ * The eight template-controlled colors. The reference flyer also uses a
+ * lighter teal for the divider ornament, near-black for the detail labels,
+ * and a fixed white for the footer text — those are not template-controlled
+ * in v1: the ornament derives from `ring`, the detail labels from
+ * `bodyText`, and the footer text is a fixed white.
+ */
+export interface FlyerColors {
+  heroBg: string
+  heroPattern: string
+  accent: string
+  ring: string
+  subtitle: string
+  iconCircle: string
+  bodyText: string
+  footerBg: string
+}
+
+export interface FlyerTemplate {
+  /** schema version */
+  v: 1
+  id: string
+  name: string
+  /** 'YYYY-MM'; the month this template is intended for */
+  month: string
+  eyebrow: string
+  headline: string[]
+  subtitle: string
+  description: string
+  /** dataURL, downscaled ≤1600px JPEG */
+  photo: { src: string }
+  colors: FlyerColors
+  watermark: { opacity: number; scale: number; x: number; y: number }
+  editableFields: FlyerField[]
+}
+
+export interface FlyerForm {
+  templateId: string
+  values: Record<FlyerField, string>
+}
