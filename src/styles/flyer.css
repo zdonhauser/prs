@@ -110,13 +110,22 @@
   position: absolute;
   top: 173px;
   left: 0;
-  /* width = 2 * 304 — the reference's per-line centerline (see the CSS
-     variable-free rationale in flyer-headline-line's comment) — so
-     flexbox align-items:center centers each line's own box on x=304,
-     not on the page's true center (408). Generalizes to an arbitrary
-     `headline: string[]`: every line centers on the same x regardless
-     of its own width. */
-  width: 608px;
+  /* Full page width, not just the 608px centered column the content sits
+     in (see padding-right below) — html2canvas's PDF export sizes its
+     capture from this element's own bounds, and a long headline line
+     legitimately overflows past 608px (the preview never clipped it,
+     since only the outer `.flyer`'s overflow:hidden bounds it, at the
+     page edge). A width equal to the box the content still centers in
+     would cut that overflow off mid-letter in the exported raster where
+     the live preview shows it in full. */
+  width: var(--page-w);
+  box-sizing: border-box;
+  /* 816 (page width) - 208 = 608, the box width flyer-headline used to be —
+     so align-items:center below still centers each line's own box on
+     x=304 (2 * 304 = 608), not the page's true center (408), exactly as
+     before. Generalizes to an arbitrary `headline: string[]`: every line
+     centers on the same x regardless of its own width. */
+  padding-right: 208px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -236,12 +245,13 @@
   z-index: 4;
 }
 
-/* Measured off the hi-res reference directly (pixel-scanned disc edges —
-   diameter ~58px, not the visual spec's ~46px starting guess). */
-.flyer-detail--date { top: 583px; left: 82px; }
-.flyer-detail--time { top: 583px; left: 416px; }
-.flyer-detail--location { top: 667px; left: 82px; }
-.flyer-detail--additional-info { top: 752px; left: 82px; }
+/* top/left are no longer field-specific CSS rules — which of the three
+   fixed slots (583/667/752px, 82px or 416px for the date/time columns; see
+   domain's layoutDetailRows) a given field lands in depends on
+   `editableFields`, not on the field's own identity, so FlyerCanvas sets
+   them as inline style per row instead. (Measured off the hi-res reference
+   directly — pixel-scanned disc edges, diameter ~58px, not the visual
+   spec's ~46px starting guess.) */
 
 .flyer-detail-icon {
   flex-shrink: 0;

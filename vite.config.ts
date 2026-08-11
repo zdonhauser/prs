@@ -89,8 +89,12 @@ export default defineConfig({
         // The default pattern set is js/css/html only. The theme logos are
         // now hashed build assets rather than public/ files listed in
         // includeAssets, so images have to be globbed explicitly or the
-        // printed page loses its logo offline.
-        globPatterns: ['**/*.{js,css,html,png,svg}'],
+        // printed page loses its logo offline. `webmanifest` is added for
+        // the same reason as the images: it's emitted by the local
+        // emit-web-manifest plugin above rather than shipped from public/,
+        // so without it here an offline first load has no manifest (and no
+        // install prompt).
+        globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
         navigateFallbackDenylist: [/\/staging\//],
         // heic-to's bundled libheif WASM decoder chunk is ~3 MB, over
         // workbox's default 2 MiB precache limit. It's dynamically

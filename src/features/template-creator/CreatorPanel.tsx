@@ -11,7 +11,7 @@ import { useRef } from 'react'
 import type React from 'react'
 import { DateSelect } from '@/features/story-form/DateSelect'
 import { flyerTemplates } from '@/config/flyerTemplates'
-import { groupByMonth } from '@/domain/flyerTemplate'
+import { groupByMonth, FLYER_FIELDS, FLYER_FIELD_LABELS } from '@/domain/flyerTemplate'
 import type { FlyerColors, FlyerField, FlyerTemplate } from '@/types'
 import { ColorControl } from './ColorControl'
 
@@ -47,16 +47,6 @@ const COLOR_FIELDS: Array<{ key: keyof FlyerColors; label: string }> = [
   { key: 'bodyText', label: 'Body Text — the description and the DATE/TIME/etc. labels' },
   { key: 'footerBg', label: 'Footer Background' },
 ]
-
-const FIELD_ORDER: FlyerField[] = ['date', 'time', 'location', 'additionalInfo', 'rscEmail']
-
-const FIELD_LABELS: Record<FlyerField, string> = {
-  date: 'Date',
-  time: 'Time',
-  location: 'Location',
-  additionalInfo: 'Additional Information',
-  rscEmail: 'RSC Email',
-}
 
 export function CreatorPanel({
   template,
@@ -295,14 +285,14 @@ export function CreatorPanel({
       <section className="form-section">
         <h2>Editable Fields</h2>
         <p className="form-empty-note">Which detail rows coordinators may fill in for this template.</p>
-        {FIELD_ORDER.map(field => (
+        {FLYER_FIELDS.map(field => (
           <label key={field} className="field-checkbox-row">
             <input
               type="checkbox"
               checked={template.editableFields.includes(field)}
               onChange={() => onFieldToggle(field)}
             />
-            {FIELD_LABELS[field]}
+            {FLYER_FIELD_LABELS[field]}
           </label>
         ))}
       </section>

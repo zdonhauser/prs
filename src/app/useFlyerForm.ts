@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { loadSavedFlyerForm, saveFlyerForm, clearSavedFlyerForm } from '@/services/storage'
 import { emptyValues } from '@/domain/flyerTemplate'
 import { defaultTemplateId, templateById } from '@/config/flyerTemplates'
@@ -55,8 +55,19 @@ export function useFlyerForm(): {
   }, [])
 
   // Persist everything typed so a trip away and back (or a PWA reload)
-  // doesn't wipe the form — mirrors useStoryForm's debounced save.
+  // doesn't wipe the form — mirrors useStoryForm's debounced save, with one
+  // difference: the very first run (mount) is skipped. Unlike the story
+  // form, this state's `templateId` starts out as whatever
+  // `defaultTemplateId()` picked for *today* — persisting that on mount,
+  // before the coordinator has touched anything, would write this month's
+  // default to storage and have it silently shadow next month's default
+  // the next time they open the builder having never made a real choice.
+  const isMounted = useRef(false)
   useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true
+      return
+    }
     const timer = setTimeout(() => saveFlyerForm(form), 400)
     return () => clearTimeout(timer)
   }, [form])

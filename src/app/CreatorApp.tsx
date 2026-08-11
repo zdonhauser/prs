@@ -9,7 +9,7 @@ import { CreatorPanel } from '@/features/template-creator/CreatorPanel'
 // mirroring how App.tsx wires PhotoCropModal in for the story app.
 import { PhotoCropModal } from '@/features/photos/PhotoCropModal'
 import { FlyerCanvas } from '@/features/flyer-preview/FlyerCanvas'
-import { makeDefaultTemplate, validateTemplate, slugify, emptyValues } from '@/domain/flyerTemplate'
+import { makeDefaultTemplate, validateTemplate, slugify, emptyValues, FLYER_FIELDS } from '@/domain/flyerTemplate'
 import { templateById } from '@/config/flyerTemplates'
 import { deliverFile } from '@/features/export/shared'
 import { PAGE_W, PAGE_H } from '@/config/page'
@@ -19,12 +19,6 @@ import { readFileAsPendingPhoto, bakeCroppedPhoto, cropCellSize, type PendingPho
 // values in it — this creator's live preview shows the template exactly as
 // a coordinator would before typing anything, i.e. the labels/icons only.
 const PREVIEW_VALUES = emptyValues()
-
-// Toggled fields are re-filtered through this fixed order rather than just
-// appended, so the schema's `editableFields` array (and the exported JSON)
-// always lists fields in the same order regardless of which checkbox was
-// clicked when.
-const FIELD_ORDER: FlyerField[] = ['date', 'time', 'location', 'additionalInfo', 'rscEmail']
 
 export default function CreatorApp() {
   const [template, setTemplate] = useState<FlyerTemplate>(() => makeDefaultTemplate())
@@ -48,7 +42,6 @@ export default function CreatorApp() {
   const [toast, setToast] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const previewAreaRef = useRef<HTMLDivElement>(null)
-  const scalerRef = useRef<HTMLDivElement>(null)
 
   const scale = usePreviewScale(previewAreaRef, sidebarCollapsed)
 
@@ -93,7 +86,11 @@ export default function CreatorApp() {
     setTemplate(prev => {
       const has = prev.editableFields.includes(field)
       const next = has ? prev.editableFields.filter(f => f !== field) : [...prev.editableFields, field]
-      return { ...prev, editableFields: FIELD_ORDER.filter(f => next.includes(f)) }
+      // Re-filtered through the domain's fixed field order rather than just
+      // appended, so the schema's `editableFields` array (and the exported
+      // JSON) always lists fields in the same order regardless of which
+      // checkbox was clicked when.
+      return { ...prev, editableFields: FLYER_FIELDS.filter(f => next.includes(f)) }
     })
   }
 
@@ -204,7 +201,7 @@ export default function CreatorApp() {
         <div className="preview-area" ref={previewAreaRef}>
           <div className="preview-label">Preview</div>
           <div className="preview-scaler" style={{ width: PAGE_W * scale, height: PAGE_H * scale }}>
-            <div ref={scalerRef} style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: PAGE_W, height: PAGE_H }}>
+            <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: PAGE_W, height: PAGE_H }}>
               <div style={{ boxShadow: '0 6px 32px rgba(0,0,0,0.3)' }}>
                 <FlyerCanvas template={template} values={PREVIEW_VALUES} />
               </div>

@@ -11,6 +11,9 @@ import {
   emptyValues,
   pickDefaultTemplateId,
   slugify,
+  layoutDetailRows,
+  FLYER_FIELDS,
+  FLYER_FIELD_LABELS,
 } from './flyerTemplate'
 
 // Loaded via import.meta.glob (not a static import of the config module) so
@@ -236,6 +239,74 @@ describe('pickDefaultTemplateId', () => {
 
   it('returns an empty string when there are no templates', () => {
     expect(pickDefaultTemplateId([], new Date(2026, 7, 15))).toBe('')
+  })
+})
+
+describe('layoutDetailRows', () => {
+  it('places date/time as slot 1 columns, then location at slot 2, then additionalInfo at slot 3, when all are editable', () => {
+    const rows = layoutDetailRows(['date', 'time', 'location', 'additionalInfo', 'rscEmail'])
+    expect(rows).toEqual([
+      { field: 'date', top: 583, left: 82 },
+      { field: 'time', top: 583, left: 416 },
+      { field: 'location', top: 667, left: 82 },
+      { field: 'additionalInfo', top: 752, left: 82 },
+    ])
+  })
+
+  it('moves additionalInfo from slot 3 to slot 2 when location is hidden', () => {
+    const rows = layoutDetailRows(['date', 'time', 'additionalInfo'])
+    expect(rows).toEqual([
+      { field: 'date', top: 583, left: 82 },
+      { field: 'time', top: 583, left: 416 },
+      { field: 'additionalInfo', top: 667, left: 82 },
+    ])
+  })
+
+  it('moves location to slot 1 and additionalInfo to slot 2 when both date and time are hidden', () => {
+    const rows = layoutDetailRows(['location', 'additionalInfo'])
+    expect(rows).toEqual([
+      { field: 'location', top: 583, left: 82 },
+      { field: 'additionalInfo', top: 667, left: 82 },
+    ])
+  })
+
+  it('fills the left column with time when date is not editable', () => {
+    const rows = layoutDetailRows(['time', 'location'])
+    expect(rows).toEqual([
+      { field: 'time', top: 583, left: 82 },
+      { field: 'location', top: 667, left: 82 },
+    ])
+  })
+
+  it('fills the left column with date when time is not editable', () => {
+    const rows = layoutDetailRows(['date', 'location'])
+    expect(rows).toEqual([
+      { field: 'date', top: 583, left: 82 },
+      { field: 'location', top: 667, left: 82 },
+    ])
+  })
+
+  it('leaves slot 1 unused, with nothing shifting up, when only additionalInfo is editable', () => {
+    const rows = layoutDetailRows(['additionalInfo'])
+    expect(rows).toEqual([{ field: 'additionalInfo', top: 583, left: 82 }])
+  })
+
+  it('is unaffected by rscEmail, which the footer handles independently', () => {
+    expect(layoutDetailRows(['rscEmail'])).toEqual([])
+  })
+
+  it('returns no rows when nothing is editable', () => {
+    expect(layoutDetailRows([])).toEqual([])
+  })
+})
+
+describe('FLYER_FIELDS / FLYER_FIELD_LABELS', () => {
+  it('has a label for every field, in the fixed field order', () => {
+    expect(FLYER_FIELDS).toEqual(['date', 'time', 'location', 'additionalInfo', 'rscEmail'])
+    for (const field of FLYER_FIELDS) {
+      expect(typeof FLYER_FIELD_LABELS[field]).toBe('string')
+      expect(FLYER_FIELD_LABELS[field].length).toBeGreaterThan(0)
+    }
   })
 })
 

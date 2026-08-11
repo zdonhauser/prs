@@ -7,6 +7,7 @@
 import { useId, useState } from 'react'
 import type React from 'react'
 import { coverRect, clampPan } from '@/domain/photoGeometry'
+import { isFieldEditable, layoutDetailRows } from '@/domain/flyerTemplate'
 import { logoSrc } from '@/config/themes'
 import prsMarkRaw from '@/assets/prs-mark.svg?raw'
 import { CalendarIcon, ClockIcon, MapPinIcon, InfoIcon } from './icons'
@@ -43,19 +44,21 @@ const WATERMARK_BASE_CENTER = { x: 120, y: 250 }
 // survive the PDF export's html2canvas raster pass.)
 const HERO_PATH = 'M0,0 H816 V234 A780,780 0 0 1 0,355 Z'
 
-interface DetailRow {
-  field: FlyerField
+interface DetailRowMeta {
   label: string
   Icon: React.ComponentType<{ className?: string }>
-  modifier: string
 }
 
-const DETAIL_ROWS: DetailRow[] = [
-  { field: 'date', label: 'DATE:', Icon: CalendarIcon, modifier: 'flyer-detail--date' },
-  { field: 'time', label: 'TIME:', Icon: ClockIcon, modifier: 'flyer-detail--time' },
-  { field: 'location', label: 'LOCATION:', Icon: MapPinIcon, modifier: 'flyer-detail--location' },
-  { field: 'additionalInfo', label: 'ADDITIONAL INFORMATION:', Icon: InfoIcon, modifier: 'flyer-detail--additional-info' },
-]
+// Label/icon per field, keyed for lookup once `layoutDetailRows` (domain)
+// has decided which fields are visible and where each one sits — this is
+// display metadata only, not layout, which is why it isn't in the domain
+// module alongside `layoutDetailRows`.
+const DETAIL_META: Record<Exclude<FlyerField, 'rscEmail'>, DetailRowMeta> = {
+  date: { label: 'DATE:', Icon: CalendarIcon },
+  time: { label: 'TIME:', Icon: ClockIcon },
+  location: { label: 'LOCATION:', Icon: MapPinIcon },
+  additionalInfo: { label: 'ADDITIONAL INFORMATION:', Icon: InfoIcon },
+}
 
 export function FlyerCanvas({ template, values }: FlyerCanvasProps) {
   const { colors, watermark, photo, headline } = template
@@ -90,7 +93,12 @@ export function FlyerCanvas({ template, values }: FlyerCanvasProps) {
   // html2canvas doesn't support the CSS `clip-path` property (see below),
   // so the id needs to be unique per instance for the SVG <clipPath> to
   // still resolve correctly if two flyers are ever mounted on one page.
-  const watermarkClipId = `flyer-watermark-clip-${useId().replace(/:/g, '')}`
+  // useId()'s colons are valid in an `id` attribute and this value is only
+  // ever consumed via `url(#...)`, never a CSS selector, so there's no need
+  // to strip them.
+  const watermarkClipId = `flyer-watermark-clip-${useId()}`
+
+  const detailRows = layoutDetailRows(template.editableFields)
 
   const photoRect = coverRect(naturalW, naturalH, PHOTO_BOX.size, PHOTO_BOX.size)
   const { x: panX, y: panY } = clampPan(naturalW, naturalH, PHOTO_BOX.size, PHOTO_BOX.size, 0, 0, 1)
@@ -182,25 +190,35 @@ export function FlyerCanvas({ template, values }: FlyerCanvasProps) {
       </div>
       <div className="flyer-description">{template.description}</div>
 
-      {/* Detail rows */}
-      {DETAIL_ROWS.map(({ field, label, Icon, modifier }) => (
-        <div key={field} className={`flyer-detail ${modifier}`}>
-          <div className="flyer-detail-icon">
-            <Icon className="flyer-detail-icon-glyph" />
+      {/* Detail rows — a field missing from `editableFields` doesn't render
+          at all (no icon, no label); `layoutDetailRows` (domain) is what
+          decides which of the three fixed slots each visible field lands
+          in, so the remaining rows close up rather than leaving a hole. */}
+      {detailRows.map(({ field, top, left }) => {
+        const { label, Icon } = DETAIL_META[field]
+        return (
+          <div key={field} className="flyer-detail" style={{ top, left }}>
+            <div className="flyer-detail-icon">
+              <Icon className="flyer-detail-icon-glyph" />
+            </div>
+            <div className="flyer-detail-label">
+              {label}
+              {values[field] && <span className="flyer-detail-value"> {values[field]}</span>}
+            </div>
           </div>
-          <div className="flyer-detail-label">
-            {label}
-            {values[field] && <span className="flyer-detail-value"> {values[field]}</span>}
-          </div>
-        </div>
-      ))}
+        )
+      })}
 
-      {/* Footer */}
+      {/* Footer — `rscEmail` is independent of the three detail slots above:
+          when it isn't editable, the footer prints the logo alone with no
+          label at all, rather than a permanently-blank "RSC EMAIL:". */}
       <div className="flyer-footer">
         <img src={logoSrc.white} alt="Portfolio Resident Services" className="flyer-footer-logo" />
-        <div className="flyer-footer-label">
-          RSC EMAIL:{values.rscEmail && <span className="flyer-detail-value"> {values.rscEmail}</span>}
-        </div>
+        {isFieldEditable(template, 'rscEmail') && (
+          <div className="flyer-footer-label">
+            RSC EMAIL:{values.rscEmail && <span className="flyer-detail-value"> {values.rscEmail}</span>}
+          </div>
+        )}
       </div>
     </div>
   )

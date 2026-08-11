@@ -254,11 +254,16 @@ export async function exportFlyerPdf(flyerElement: HTMLElement | null, { templat
   }
 
   // ── Layer 4: vector text ──────────────────────────────────────────────
+  // Both wrap on screen (neither .flyer-eyebrow nor .flyer-subtitle sets
+  // white-space: nowrap), so both need the same splitTextToSize treatment
+  // .flyer-description already gets below — without it, a long eyebrow or
+  // subtitle draws as one wide centered/left line that runs off the 8.5in
+  // page instead of wrapping to match the preview.
   const eyebrow = flyerElement.querySelector<HTMLElement>('.flyer-eyebrow')
-  if (eyebrow) drawFlyerText(pdf, eyebrow.textContent ?? '', eyebrow.getBoundingClientRect(), getComputedStyle(eyebrow), pageRect, domScale)
+  if (eyebrow) drawFlyerText(pdf, eyebrow.textContent ?? '', eyebrow.getBoundingClientRect(), getComputedStyle(eyebrow), pageRect, domScale, true)
 
   const subtitle = flyerElement.querySelector<HTMLElement>('.flyer-subtitle')
-  if (subtitle) drawFlyerText(pdf, subtitle.textContent ?? '', subtitle.getBoundingClientRect(), getComputedStyle(subtitle), pageRect, domScale)
+  if (subtitle) drawFlyerText(pdf, subtitle.textContent ?? '', subtitle.getBoundingClientRect(), getComputedStyle(subtitle), pageRect, domScale, true)
 
   const description = flyerElement.querySelector<HTMLElement>('.flyer-description')
   if (description) drawFlyerText(pdf, description.textContent ?? '', description.getBoundingClientRect(), getComputedStyle(description), pageRect, domScale, true)

@@ -16,7 +16,19 @@ const COLOR_KEYS: Array<keyof FlyerColors> = [
   'footerBg',
 ]
 
-const FLYER_FIELDS: readonly FlyerField[] = ['date', 'time', 'location', 'additionalInfo', 'rscEmail']
+// The fixed field order every form/checklist in the suite presents fields
+// in — exported so FlyerFormPanel, CreatorPanel and CreatorApp share one
+// list instead of each keeping its own verbatim copy.
+export const FLYER_FIELDS: readonly FlyerField[] = ['date', 'time', 'location', 'additionalInfo', 'rscEmail']
+
+/** Display labels for the five flyer fields, shared by the same three call sites as `FLYER_FIELDS`. */
+export const FLYER_FIELD_LABELS: Record<FlyerField, string> = {
+  date: 'Date',
+  time: 'Time',
+  location: 'Location',
+  additionalInfo: 'Additional Information',
+  rscEmail: 'RSC Email',
+}
 
 function isFlyerField(value: string): value is FlyerField {
   return (FLYER_FIELDS as readonly string[]).includes(value)
@@ -195,6 +207,62 @@ export function currentMonth(now: Date = new Date()): string {
 
 export function isFieldEditable(template: FlyerTemplate, field: FlyerField): boolean {
   return template.editableFields.includes(field)
+}
+
+/** A detail-row field placed at one of the flyer's three fixed slot positions (flyer.css's measured top/left values). */
+export interface DetailRowPlacement {
+  field: Exclude<FlyerField, 'rscEmail'>
+  top: number
+  left: number
+}
+
+// The three detail-row slots' fixed top positions (flyer.css:241-244's
+// measured values, kept here as the one source layoutDetailRows computes
+// from — FlyerCanvas applies them as inline style rather than per-field CSS
+// classes, since which field lands in which slot now depends on
+// `editableFields`, not on the field's own identity).
+const DETAIL_SLOT_TOPS = [583, 667, 752] as const
+const DETAIL_LEFT_COL = 82
+const DETAIL_RIGHT_COL = 416
+
+/**
+ * Assigns the visible detail-row fields (everything but `rscEmail`, which
+ * the footer handles independently) to the flyer's three fixed slots,
+ * closing up any row a hidden field would otherwise leave blank.
+ *
+ * `date` and `time` share slot 1 as two columns: whichever of the two is
+ * editable fills the left column first, the other the right; if neither is
+ * editable, slot 1 goes unused. `location`, then `additionalInfo`, each then
+ * claim the next free slot in that order, skipped entirely when not
+ * editable. So hiding `location` alone moves `additionalInfo` from slot 3
+ * to slot 2; hiding both `date` and `time` moves `location` to slot 1 and
+ * `additionalInfo` to slot 2.
+ */
+export function layoutDetailRows(editableFields: readonly FlyerField[]): DetailRowPlacement[] {
+  const editable = new Set(editableFields)
+  const rows: DetailRowPlacement[] = []
+  let slot = 0
+
+  const dateVisible = editable.has('date')
+  const timeVisible = editable.has('time')
+  if (dateVisible || timeVisible) {
+    const top = DETAIL_SLOT_TOPS[slot]
+    slot++
+    const columns: Array<'date' | 'time'> = []
+    if (dateVisible) columns.push('date')
+    if (timeVisible) columns.push('time')
+    rows.push({ field: columns[0], top, left: DETAIL_LEFT_COL })
+    if (columns[1]) rows.push({ field: columns[1], top, left: DETAIL_RIGHT_COL })
+  }
+
+  for (const field of ['location', 'additionalInfo'] as const) {
+    if (editable.has(field)) {
+      rows.push({ field, top: DETAIL_SLOT_TOPS[slot], left: DETAIL_LEFT_COL })
+      slot++
+    }
+  }
+
+  return rows
 }
 
 /**
