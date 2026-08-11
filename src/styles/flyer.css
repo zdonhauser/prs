@@ -112,12 +112,12 @@
 
 .flyer-eyebrow {
   position: absolute;
-  top: 32px;
+  top: 27px;
   left: 42px;
   width: 600px;
-  font-size: 16px;
+  font-size: 27px;
   font-weight: 800;
-  letter-spacing: 1.6px;
+  letter-spacing: -0.7px;
   text-transform: uppercase;
   color: var(--f-accent);
   z-index: 4;
@@ -125,9 +125,18 @@
 
 .flyer-headline {
   position: absolute;
-  top: 140px;
-  left: 76px;
-  width: 560px;
+  top: 173px;
+  left: 0;
+  /* width = 2 * 304 — the reference's per-line centerline (see the CSS
+     variable-free rationale in flyer-headline-line's comment) — so
+     flexbox align-items:center centers each line's own box on x=304,
+     not on the page's true center (408). Generalizes to an arbitrary
+     `headline: string[]`: every line centers on the same x regardless
+     of its own width. */
+  width: 608px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   z-index: 4;
   /* Above the photo (z-index 3) — the reference's headline legibly
      overlaps the photo circle's left edge rather than being clipped by
@@ -136,22 +145,31 @@
 }
 
 .flyer-headline-line {
-  /* Reference headline is a very heavy, tightly-tracked, slightly
-     condensed display face. Try the named condensed system face first
-     (macOS/Windows both ship a "Helvetica Neue Condensed Bold"); the
-     scaleX fallback approximates the same condensed look on platforms
-     where that face doesn't bind, using Arial Black's available weight. */
-  font-family: 'Helvetica Neue Condensed Bold', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
-  font-weight: 800;
-  font-size: 97px;
-  line-height: 79px;
-  letter-spacing: -1px;
+  /* The reference headline is a heavy, WIDE grotesque — measured against
+     it, "SAFER" spans 201px and "COMMUNITIES" 464px at a 48px cap height.
+     An earlier pass read it as condensed and set a narrow stack plus
+     scaleX(0.9), which came out at 151px and 323px: right height, far too
+     narrow. Arial Black is the widest heavy weight that ships on both
+     macOS/iOS and Windows, so it binds without a webfont download (this
+     page has to work offline). */
+  font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 900;
+  font-size: 64px;
+  line-height: 64px;
   text-transform: uppercase;
   color: var(--f-accent);
   white-space: nowrap;
   display: inline-block;
-  transform: scaleX(0.9);
-  transform-origin: left center;
+  /* Arial Black at a matched 48px cap height is about 15% wider per glyph
+     than the reference face, consistently across both lines (measured:
+     245 vs 201 for "SAFER", 542 vs 464 for "COMMUNITIES"). Tracking cannot
+     fix that — solving for font-size and letter-spacing together has no
+     sane solution — but a horizontal scale can, since the discrepancy is
+     proportional. Centre origin so the scale shrinks symmetrically about
+     the centreline the flex parent establishes rather than sliding the
+     glyphs off it. */
+  transform: scaleX(0.87);
+  transform-origin: center;
 }
 
 /* ── Flyer: subtitle + ornament ──────────────────────── */
@@ -168,7 +186,7 @@
      dependency decision out of this task's scope — see report), so this
      falls back through the roundest widely-installed system faces. */
   font-family: 'Poppins', -apple-system, 'Century Gothic', 'Trebuchet MS', Verdana, sans-serif;
-  font-size: 20px;
+  font-size: 23px;
   font-weight: 700;
   color: var(--f-subtitle);
   z-index: 4;
@@ -208,13 +226,19 @@
 .flyer-description {
   position: absolute;
   top: 489px;
-  left: 108px;
-  width: 600px;
+  /* left/width centered on the same x=408 page center .flyer-subtitle
+     uses (108+600/2 was the old, too-narrow box; 88+640/2 keeps that
+     same center while widening the measure to the reference's 640px,
+     which is also what makes the copy break after "...practical
+     safety" and "...strategies, and" as the reference does). */
+  left: 88px;
+  width: 640px;
   text-align: center;
   /* Same rounded-face fallback as .flyer-subtitle — see its comment. */
   font-family: 'Poppins', -apple-system, 'Century Gothic', 'Trebuchet MS', Verdana, sans-serif;
-  font-size: 15px;
+  font-size: 21px;
   line-height: 24px;
+  letter-spacing: -0.5px;
   color: var(--f-body-text);
   z-index: 4;
 }
@@ -248,8 +272,12 @@
 }
 
 .flyer-detail-icon-glyph {
-  width: 30px;
-  height: 30px;
+  /* The reference's glyph ink measures 32x32 inside its 58px disc. The
+     artwork fills about 72% of its 24-unit viewBox, so the box has to be
+     ~44px to put 32px of ink on the page; at 30px it came out at 22px and
+     read as undersized against the reference. */
+  width: 44px;
+  height: 44px;
   color: var(--f-accent);
 }
 
@@ -283,10 +311,20 @@
 
 .flyer-footer-logo {
   position: absolute;
-  left: 64px;
-  top: 50%;
+  /* left is not 64px (the reference's measured ink-left): the source PNG
+     carries a built-in left margin before the pinwheel mark starts, which
+     scales with the element's own box size, so the rendered box's left
+     edge must sit that margin to the left of where the visible ink
+     should land. */
+  left: 41px;
+  /* Not a plain 50%/translateY(-50%) center: the source PNG's ink also
+     sits slightly above the vertical center of its own (taller) canvas,
+     so true 50/50 centering of the box lands the visible logo about 5px
+     low against the reference. Nudged up to compensate, footer-relative
+     (.flyer-footer's own top is page y=941). */
+  top: calc(50% - 5.5px);
   transform: translateY(-50%);
-  height: 55px;
+  height: 104px;
   width: auto;
   object-fit: contain;
 }
