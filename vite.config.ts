@@ -13,6 +13,18 @@ const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 
 
 export default defineConfig({
   base: './',
+  build: {
+    rollupOptions: {
+      // Multi-page suite: static landing at the root, one sub-app per tool.
+      // Each tool is a real directory so its URL works as a direct link on
+      // GitHub Pages (no SPA fallback needed).
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        'success-story': fileURLToPath(new URL('./success-story/index.html', import.meta.url)),
+        'event-flyer': fileURLToPath(new URL('./event-flyer/index.html', import.meta.url)),
+      },
+    },
+  },
   define: {
     // Shown in the header so a glance at the live site confirms which
     // build is deployed — bump package.json's version with each push.
@@ -26,8 +38,45 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    // The web manifest is static data, but vite-plugin-pwa can only inject a
+    // "./manifest.webmanifest" link relative to each page — which 404s for
+    // the nested tool pages (/success-story/ etc.). So the plugin's manifest
+    // handling is disabled (manifest: false) and the file is emitted here
+    // instead; each HTML page links it with its own correct relative path.
+    // (Still generated rather than dropped in public/ because the staging
+    // build needs a different name so the two installs are distinguishable
+    // on a home screen.)
+    {
+      name: 'emit-web-manifest',
+      generateBundle() {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'manifest.webmanifest',
+          source: JSON.stringify({
+            name: isStaging ? 'PRS Tools (Staging)' : 'PRS Tools',
+            short_name: isStaging ? 'PRS (Stg)' : 'PRS Tools',
+            description: 'PRS Good Neighbor Program document builders',
+            theme_color: '#1e3a5f',
+            background_color: '#ffffff',
+            display: 'standalone',
+            orientation: 'portrait',
+            start_url: './',
+            scope: './',
+            icons: [
+              { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+              { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+            ],
+          }),
+        })
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
+      // The plugin's automatic registerSW injection also uses "./..."
+      // relative to the page, 404ing for nested tool pages — each HTML file
+      // registers the suite-root sw.js itself instead.
+      injectRegister: false,
+      manifest: false,
       // The prod service worker's scope (site root) contains /staging/,
       // and workbox's default navigation fallback would answer staging
       // navigations with prod's cached index.html — silently serving the
@@ -44,19 +93,6 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       includeAssets: ['logo-color.png', 'logo-black.png', 'logo-white.png', 'apple-touch-icon.png'],
-      manifest: {
-        name: isStaging ? 'PRS Success Story (Staging)' : 'PRS Success Story Builder',
-        short_name: isStaging ? 'Story (Stg)' : 'Success Story',
-        description: 'Create branded PRS Good Neighbor Program success stories',
-        theme_color: '#1e3a5f',
-        background_color: '#ffffff',
-        display: 'standalone',
-        orientation: 'portrait',
-        icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }
-        ]
-      }
     })
   ]
 })

@@ -5,12 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>PRS Success Story Builder</title>
-  <link rel="icon" href="/icon-192.png" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <title>PRS Tools</title>
+  <link rel="icon" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <script>
+    // One suite-wide service worker at the site root, covering every tool
+    // page. The site may be served from the repo root or the staging
+    // subdirectory, so derive the root from the current path rather than
+    // hardcoding it.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const root = location.pathname.replace(/(success-story|event-flyer|template-creator)\/$/, '')
+        navigator.serviceWorker.register(root + 'sw.js', { scope: root })
+      })
+    }
+  </script>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f0f4f8;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: #2d3748;
+    }
+    .landing {
+      text-align: center;
+      padding: 32px;
+    }
+    .landing img {
+      width: 220px;
+      max-width: 70vw;
+    }
+    .landing h1 {
+      font-size: 22px;
+      margin: 24px 0 8px;
+    }
+    .landing p {
+      margin: 0 0 28px;
+      color: #64748b;
+    }
+    .landing a {
+      display: block;
+      width: 280px;
+      max-width: 80vw;
+      margin: 0 auto 14px;
+      padding: 16px 20px;
+      background: #2056a0;
+      color: #fff;
+      text-decoration: none;
+      font-size: 17px;
+      font-weight: 600;
+      border-radius: 12px;
+    }
+    .landing a.secondary {
+      background: #fff;
+      color: #2056a0;
+      border: 2px solid #2056a0;
+    }
+  </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
+  <div class="landing">
+    <img src="./logo-color.png" alt="Portfolio Resident Services" />
+    <h1>PRS Tools</h1>
+    <p>Good Neighbor Program document builders</p>
+    <a href="./success-story/">Success Story Builder</a>
+    <a href="./event-flyer/" class="secondary">Event Flyer Builder</a>
+  </div>
 </body>
 </html>
