@@ -7,7 +7,6 @@
 // deliberate cross-feature exception `story-form/FormPanel` already makes
 // for `photos`/`ai-generate` (conventions brief §1) — the plan doc names
 // this exact reuse for the template creator.
-import { useRef } from 'react'
 import type React from 'react'
 import { DateSelect } from '@/features/story-form/DateSelect'
 import { flyerTemplates } from '@/config/flyerTemplates'
@@ -102,8 +101,6 @@ export function CreatorPanel({
   customColors,
   onCustomColorAdd,
 }: CreatorPanelProps) {
-  const photoInputRef = useRef<HTMLInputElement>(null)
-  const importInputRef = useRef<HTMLInputElement>(null)
   const monthGroups = groupByMonth(flyerTemplates)
   const photoBox = resolvePhotoBox(template)
   const hasCustomPhotoBox = template.photo.box !== undefined
@@ -160,10 +157,16 @@ export function CreatorPanel({
             ))}
           </select>
         </label>
-        <button type="button" className="btn-upload" onClick={() => importInputRef.current?.click()}>
+        <input
+          id="creator-import-input"
+          type="file"
+          accept=".json,application/json"
+          className="file-input-visually-hidden"
+          onChange={handleImportInput}
+        />
+        <label className="btn-upload" htmlFor="creator-import-input">
           Import a Template File…
-        </button>
-        <input ref={importInputRef} type="file" accept=".json,application/json" hidden onChange={handleImportInput} />
+        </label>
         {importError && <p className="form-error-note">{importError}</p>}
       </section>
 
@@ -255,6 +258,21 @@ export function CreatorPanel({
 
       <section className="form-section">
         <h2>Photo</h2>
+        {/* The input comes first so the label that opens it can be its
+            next sibling, which is what lets CSS draw the input's focus ring
+            on that label. See .file-input-visually-hidden in form.css for
+            why this is a label rather than a button calling .click().
+
+            See PhotoSection's own comment on why this omits the "image/*"
+            MIME wildcard — Safari/Chrome's native picker filters out
+            HEIC/HEIF whenever any image/… MIME type is present. */}
+        <input
+          id="creator-photo-input"
+          type="file"
+          accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.avif,.heic,.heif,.tif,.tiff"
+          className="file-input-visually-hidden"
+          onChange={handlePhotoInput}
+        />
         {template.photo.src ? (
           <div className="creator-photo-preview">
             <img src={template.photo.src} alt="" className="creator-photo-thumb" />
@@ -262,29 +280,19 @@ export function CreatorPanel({
               <button type="button" className="btn-ghost" onClick={onPhotoAdjust}>
                 Adjust
               </button>
-              <button type="button" className="btn-ghost" onClick={() => photoInputRef.current?.click()}>
+              <label className="btn-ghost btn-ghost--label" htmlFor="creator-photo-input">
                 Replace…
-              </button>
+              </label>
               <button type="button" className="btn-ghost thumb-remove" onClick={onPhotoRemove}>
                 Remove
               </button>
             </div>
           </div>
         ) : (
-          <button type="button" className="btn-upload" onClick={() => photoInputRef.current?.click()}>
+          <label className="btn-upload" htmlFor="creator-photo-input">
             + Add Photo
-          </button>
+          </label>
         )}
-        {/* See PhotoSection's own comment on why this omits the "image/*"
-            MIME wildcard — Safari/Chrome's native picker filters out
-            HEIC/HEIF whenever any image/… MIME type is present. */}
-        <input
-          ref={photoInputRef}
-          type="file"
-          accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.avif,.heic,.heif,.tif,.tiff"
-          hidden
-          onChange={handlePhotoInput}
-        />
         {photoError && <p className="form-error-note">{photoError}</p>}
       </section>
 

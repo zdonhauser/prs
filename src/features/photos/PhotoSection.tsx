@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React from 'react'
 import { photoLayouts } from '@/config/photoLayouts'
 import { normalizeImageFile } from '@/services/imageConversion'
 import type { Photo, LayoutCell } from '@/types'
@@ -11,8 +11,6 @@ interface PhotoSectionProps {
 }
 
 export function PhotoSection({ photos, layoutIndex, onPhotosChange, onLayoutChange }: PhotoSectionProps) {
-  const fileRef = useRef<HTMLInputElement>(null)
-
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     const slots = 8 - photos.length
@@ -78,26 +76,31 @@ export function PhotoSection({ photos, layoutIndex, onPhotosChange, onLayoutChan
     <section className="form-section">
       <h2>Photos</h2>
 
-      {photos.length < 8 && (
-        <button className="btn-upload" onClick={() => fileRef.current?.click()}>
-          + Add Photos {photos.length > 0 ? `(${photos.length} of 8)` : '— up to 8'}
-        </button>
-      )}
       {/* Deliberately NOT using the "image/*" MIME wildcard here: both
           Safari and Chrome's native macOS file picker filter out HEIC/HEIF
           entirely whenever accept includes an image/* (or any image/…)
           MIME type, even though macOS itself can read them — a known,
           still-open bug in both engines (WebKit #212489, Chromium
           #375118901). Listing extensions explicitly, with no MIME
-          wildcard, is the documented workaround. */}
+          wildcard, is the documented workaround.
+
+          Opened by the label below rather than a scripted click on a
+          display:none input — see .file-input-visually-hidden in form.css.
+          Rendered unconditionally, even at eight photos when the label is
+          gone, so the id it's addressed by never disappears mid-session. */}
       <input
-        ref={fileRef}
+        id="story-photos-input"
         type="file"
         accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.avif,.heic,.heif,.tif,.tiff"
         multiple
-        hidden
+        className="file-input-visually-hidden"
         onChange={handleFiles}
       />
+      {photos.length < 8 && (
+        <label className="btn-upload" htmlFor="story-photos-input">
+          + Add Photos {photos.length > 0 ? `(${photos.length} of 8)` : '— up to 8'}
+        </label>
+      )}
 
       {photos.length > 0 && (
         <>

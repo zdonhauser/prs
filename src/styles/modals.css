@@ -193,6 +193,11 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 16px;
+  /* Stated rather than left to the user agent: <button> doesn't inherit
+     font-family but <label> does, so without this the "Replace…" label
+     would render in the page's system font while the "Adjust" button
+     beside it stayed in the UA's Arial. */
+  font-family: inherit;
   font-size: 14px;
   cursor: pointer;
   color: var(--text);
@@ -200,6 +205,16 @@
 
 .btn-ghost:hover {
   background: var(--bg);
+}
+
+/* "Replace…" is a <label> owning the photo input rather than a button that
+   scripts a click at it (see .file-input-visually-hidden in form.css). A
+   label is inline, so it needs these to sit level with the real buttons
+   beside it. */
+.btn-ghost--label {
+  display: inline-block;
+  box-sizing: border-box;
+  line-height: normal;
 }
 
 .btn-primary-sm {
