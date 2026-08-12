@@ -262,7 +262,7 @@ export function FlyerCanvas({ template, values, onPhotoClick }: FlyerCanvasProps
               className={compact ? 'flyer-footer-label flyer-footer-label--compact' : 'flyer-footer-label'}
               style={compact ? { top } : undefined}
             >
-              {showLabel ? FOOTER_LABELS[field] : <span className="flyer-detail-value">{value}</span>}
+              {showLabel ? FOOTER_LABELS[field] : <span className="flyer-footer-value">{value}</span>}
             </div>
           )
         })}

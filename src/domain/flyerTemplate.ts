@@ -496,6 +496,31 @@ export function exampleValues(): Record<FlyerField, string> {
   }
 }
 
+/**
+ * Fills a template's empty TEXT fields with stand-ins, for the creator's
+ * preview only. A brand-new template has no eyebrow, headline, subtitle or
+ * description, so its preview is a mostly blank page — an author can't judge
+ * the design until they've typed something into every field.
+ *
+ * Preview-only, and never exported: the caller substitutes this into what it
+ * renders, not into the template it holds. Anything the author has actually
+ * typed is left exactly as it is; only genuinely empty fields are filled.
+ */
+export function withExampleText(template: FlyerTemplate): FlyerTemplate {
+  const headlineIsEmpty = template.headline.every((line) => line.trim() === '')
+  return {
+    ...template,
+    eyebrow: template.eyebrow.trim() === '' ? 'A PRS SIGNATURE EVENT' : template.eyebrow,
+    headline: headlineIsEmpty ? ['YOUR EVENT', 'HEADLINE HERE'] : template.headline,
+    subtitle:
+      template.subtitle.trim() === '' ? 'A short line about what this event is for.' : template.subtitle,
+    description:
+      template.description.trim() === ''
+        ? 'A sentence or two describing the event — who it is for, what happens, and why someone should come along. Two or three lines is about right.'
+        : template.description,
+  }
+}
+
 export function emptyValues(): Record<FlyerField, string> {
   return {
     date: '',

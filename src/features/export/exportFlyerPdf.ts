@@ -149,7 +149,7 @@ function drawFlyerText(pdf: jsPDF, text: string, rect: DOMRect, style: CSSStyleD
 
 // A `.flyer-detail-label`/`.flyer-footer-label` element's own text (e.g.
 // "DATE:") is a direct text-node child sitting alongside an optional
-// `.flyer-detail-value` span — `el.textContent` would run the two
+// `.flyer-detail-value`/`.flyer-footer-value` span — `el.textContent` would run the two
 // together, so only the direct text-node children are taken.
 function labelOwnText(el: HTMLElement): string {
   return Array.from(el.childNodes)
@@ -166,7 +166,11 @@ function labelOwnText(el: HTMLElement): string {
 function drawLabelAndValue(pdf: jsPDF, labelEl: HTMLElement, pageRect: DOMRect, domScale: number): void {
   drawFlyerText(pdf, labelOwnText(labelEl), labelEl.getBoundingClientRect(), getComputedStyle(labelEl), pageRect, domScale)
 
-  const valueEl = labelEl.querySelector<HTMLElement>('.flyer-detail-value')
+  // Detail rows use .flyer-detail-value; footer values use
+  // .flyer-footer-value (lighter weight, no uppercase — see flyer.css).
+  // Both are "the value run inside a label element", so both are matched
+  // here; missing the footer one would silently drop it from the PDF.
+  const valueEl = labelEl.querySelector<HTMLElement>('.flyer-detail-value, .flyer-footer-value')
   if (valueEl) {
     drawFlyerText(pdf, valueEl.textContent ?? '', valueEl.getBoundingClientRect(), getComputedStyle(valueEl), pageRect, domScale)
   }

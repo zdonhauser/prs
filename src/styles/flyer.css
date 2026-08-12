@@ -363,3 +363,18 @@
 .flyer-footer-label--compact {
   font-size: 13px;
 }
+
+/* Footer VALUES, not labels. `.flyer-footer-label` is 800-weight uppercase
+   because it was built for "RSC EMAIL:" — a label. Contact details set that
+   heavy read as shouting, and the block of up to four of them turns into a
+   slab. Regular weight, normal case, and a touch of letter-spacing back:
+   these are read, not announced. (Values also can't take the uppercase the
+   label rule applies — it would mangle an email address or a URL.) */
+.flyer-footer-value {
+  /* 400, not the 500 first tried: white type on a saturated blue reads
+     heavier than its nominal weight (light-on-dark optically thickens the
+     strokes), so anything above regular still looked like a slab. */
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0.1px;
+}

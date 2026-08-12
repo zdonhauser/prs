@@ -9,7 +9,7 @@ import { CreatorPanel } from '@/features/template-creator/CreatorPanel'
 // mirroring how App.tsx wires PhotoCropModal in for the story app.
 import { PhotoCropModal } from '@/features/photos/PhotoCropModal'
 import { FlyerCanvas } from '@/features/flyer-preview/FlyerCanvas'
-import { makeDefaultTemplate, validateTemplate, slugify, emptyValues, exampleValues, formatMonth, FLYER_FIELDS, resolvePhotoBox } from '@/domain/flyerTemplate'
+import { makeDefaultTemplate, validateTemplate, slugify, emptyValues, exampleValues, withExampleText, formatMonth, FLYER_FIELDS, resolvePhotoBox } from '@/domain/flyerTemplate'
 import { templateById } from '@/config/flyerTemplates'
 import { deliverFile } from '@/features/export/shared'
 import { PAGE_W, PAGE_H } from '@/config/page'
@@ -114,6 +114,11 @@ export default function CreatorApp() {
   const previewAreaRef = useRef<HTMLDivElement>(null)
 
   const scale = usePreviewScale(previewAreaRef, sidebarCollapsed)
+
+  // What the PREVIEW renders. `template` itself is never touched, so nothing
+  // here can reach an export — the stand-ins exist so a half-finished
+  // template still shows a designed-looking page.
+  const previewTemplate = showExamples ? withExampleText(template) : template
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -380,7 +385,7 @@ export default function CreatorApp() {
             <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: PAGE_W, height: PAGE_H }}>
               <div style={{ boxShadow: '0 6px 32px rgba(0,0,0,0.3)' }}>
                 <FlyerCanvas
-                  template={template}
+                  template={previewTemplate}
                   values={showExamples ? EXAMPLE_PREVIEW_VALUES : EMPTY_PREVIEW_VALUES}
                   onPhotoClick={template.photo.src ? handlePhotoAdjust : undefined}
                 />
