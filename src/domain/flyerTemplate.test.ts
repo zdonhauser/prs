@@ -199,28 +199,76 @@ describe('every bundled template (backward compatibility)', () => {
     }
   })
 
-  it('none of them lists phone/address/website in editableFields (those fields did not exist yet)', () => {
+  // These two used to assert over the bundled files themselves, back when
+  // every bundled template predated the footer fields. The shipped example
+  // has since opted into all eight, so asserting the legacy shape over the
+  // bundled glob would now be asserting the opposite of what ships. The
+  // concern those tests actually protect — a template file written before
+  // these fields existed still loads and still renders the way it did —
+  // belongs to a fixed legacy fixture, which is what they read now. A file
+  // on disk can be updated out from under a compatibility guarantee; a
+  // frozen literal can't, which is the whole point of pinning it here.
+  const legacyTemplate: unknown = {
+    v: 1,
+    id: 'legacy',
+    name: 'Legacy',
+    month: '2026-01',
+    eyebrow: 'A PRS SIGNATURE EVENT',
+    headline: ['LEGACY'],
+    subtitle: 'Written before phone/address/website existed.',
+    description: 'And before photo.box existed.',
+    photo: { src: 'data:image/jpeg;base64,x' },
+    colors: DEFAULT_COLORS,
+    watermark: DEFAULT_WATERMARK,
+    editableFields: ['date', 'time', 'location', 'additionalInfo', 'rscEmail'],
+  }
+
+  it('a template predating phone/address/website still validates and keeps its five fields', () => {
+    const template = validateTemplate(legacyTemplate)
+    expect(template.editableFields).toEqual(['date', 'time', 'location', 'additionalInfo', 'rscEmail'])
+    expect(template.editableFields).not.toContain('phone')
+    expect(template.editableFields).not.toContain('address')
+    expect(template.editableFields).not.toContain('website')
+  })
+
+  it('layoutFooterFields renders exactly the legacy single rscEmail row for it, blank or filled', () => {
+    const template = validateTemplate(legacyTemplate)
+    const blank = layoutFooterFields(template.editableFields, emptyValues())
+    const filled = layoutFooterFields(template.editableFields, { ...emptyValues(), rscEmail: 'coordinator@example.com' })
+    const expectedRow = [{ field: 'rscEmail' as const, top: 26, compact: false }]
+    expect(isFieldEditable(template, 'rscEmail')).toBe(true)
+    expect(blank).toEqual(expectedRow)
+    expect(filled).toEqual(expectedRow)
+  })
+
+  it('the shipped example offers every footer field, so the builder demonstrates all of them', () => {
     for (const raw of allBundledTemplates) {
       const template = validateTemplate(raw)
-      expect(template.editableFields).not.toContain('phone')
-      expect(template.editableFields).not.toContain('address')
-      expect(template.editableFields).not.toContain('website')
+      for (const field of FOOTER_FIELDS) {
+        expect(isFieldEditable(template, field)).toBe(true)
+      }
     }
   })
 
-  it('layoutFooterFields renders exactly the legacy single rscEmail row for every one of them, blank or filled', () => {
+  it('the shipped example lays out a footer row per filled field, and none for the blank ones', () => {
     for (const raw of allBundledTemplates) {
       const template = validateTemplate(raw)
-      const blank = layoutFooterFields(template.editableFields, emptyValues())
-      const filled = layoutFooterFields(template.editableFields, { ...emptyValues(), rscEmail: 'coordinator@example.com' })
-      // Every bundled template's editableFields includes rscEmail today; if
-      // a future one omits it, both calls correctly return [] instead —
-      // still exactly today's behavior, not a new one.
-      const expectedRow = isFieldEditable(template, 'rscEmail')
-        ? [{ field: 'rscEmail' as const, top: 26, compact: false }]
-        : []
-      expect(blank).toEqual(expectedRow)
-      expect(filled).toEqual(expectedRow)
+      // Blank is the state a coordinator opens the builder in. The three
+      // new fields must print nothing at all rather than an empty row —
+      // but rscEmail still holds its single anchor row, exactly as it did
+      // before the other three existed, so adding them to the shipped
+      // example doesn't change what an untouched flyer looks like.
+      expect(layoutFooterFields(template.editableFields, emptyValues())).toEqual([
+        { field: 'rscEmail', top: 26, compact: false },
+      ])
+      const filled = layoutFooterFields(template.editableFields, {
+        ...emptyValues(),
+        rscEmail: 'coordinator@example.com',
+        phone: '(555) 123-4567',
+        address: '123 Example Ave',
+        website: 'www.example.com',
+      })
+      expect(filled.map(row => row.field)).toEqual([...FOOTER_FIELDS])
     }
   })
 })

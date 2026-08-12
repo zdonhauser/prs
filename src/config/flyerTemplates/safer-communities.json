@@ -34,6 +34,9 @@
     "time",
     "location",
     "additionalInfo",
-    "rscEmail"
+    "rscEmail",
+    "phone",
+    "address",
+    "website"
   ]
 }
